@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "engine": "fm",
+  "oscillator": { "waveform": "sine", "unison": 0, "spread": 0 },
+  "fm": { "harmonicity": 3.5, "modulationIndex": 9, "modWaveform": "sine" },
+  "filter": { "cutoff": 8000, "resonance": 0.5, "rolloff": -12, "envAmount": 0 },
+  "filterEnv": { "attack": 0.002, "decay": 0.2, "sustain": 0.8, "release": 0.3 },
+  "ampEnv": { "attack": 0.002, "decay": 2.5, "sustain": 0, "release": 2.5 },
+  "drive": 0,
+  "fx": {
+    "chorus": 0.15,
+    "delay": { "wet": 0.2, "time": "4n", "feedback": 0.3 },
+    "reverb": { "wet": 0.35, "decay": 3.0 }
+  },
+  "glide": 0,
+  "master": -6
+}
