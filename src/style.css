@@ -148,6 +148,56 @@ select {
   font-size: 13px;
 }
 
+/* --- Timbre: guardar presets ------------------------------------- */
+.preset-save {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 14px;
+}
+
+.preset-save input {
+  flex: 1;
+  min-width: 0;
+  background: var(--pad);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+.preset-save input[aria-invalid="true"] {
+  border-color: #e0645f;
+}
+
+.preset-save button {
+  appearance: none;
+  background: var(--pad);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.preset-save button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.preset-save button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preset-save .save-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1220;
+  font-weight: 650;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -214,13 +264,30 @@ select {
   background: var(--pad);
   color: var(--text);
   border-radius: 9px;
-  padding: 18px 0;
+  padding: 12px 0;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   user-select: none;
   touch-action: none;
   transition: transform 0.04s ease, background 0.08s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.1;
+}
+
+.pad-roman {
+  font-size: 15px;
+}
+
+.pad-chord {
+  font-size: 10px;
+  font-weight: 500;
+  font-style: normal;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .pad[data-quality="minor"] {
@@ -234,6 +301,11 @@ select {
   background: var(--pad-active);
   color: #0b1220;
   transform: translateY(1px);
+}
+
+.pad:active .pad-chord,
+.pad[data-held="true"] .pad-chord {
+  color: #0b1220;
 }
 
 /* --- Timbre: visualizador ---------------------------------------- */

@@ -1,10 +1,10 @@
 {
   "version": 2,
   "engine": "subtractive",
-  "oscillator": { "waveform": "sawtooth", "unison": 2, "spread": 12 },
-  "filter": { "cutoff": 1700, "resonance": 0.9, "rolloff": -24, "envAmount": 0.8 },
+  "oscillator": { "waveform": "sawtooth", "unison": 0, "spread": 12 },
+  "filter": { "cutoff": 6110, "resonance": 0.9, "rolloff": -24, "envAmount": 0.8 },
   "filterEnv": { "attack": 0.15, "decay": 0.9, "sustain": 0.6, "release": 1.2 },
-  "ampEnv": { "attack": 0.18, "decay": 0.7, "sustain": 0.88, "release": 2.2 },
+  "ampEnv": { "attack": 2.561, "decay": 1.481, "sustain": 0.45, "release": 0.051 },
   "drive": 0.02,
   "fx": {
     "chorus": 0.2,

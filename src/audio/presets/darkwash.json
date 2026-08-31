@@ -1,15 +1,15 @@
 {
   "version": 2,
   "engine": "subtractive",
-  "oscillator": { "waveform": "sawtooth", "unison": 2, "spread": 22 },
-  "filter": { "cutoff": 520, "resonance": 1.8, "rolloff": -24, "envAmount": 2.6 },
-  "filterEnv": { "attack": 2.0, "decay": 2.5, "sustain": 0.5, "release": 3.5 },
-  "ampEnv": { "attack": 1.6, "decay": 1.0, "sustain": 0.85, "release": 3.8 },
-  "drive": 0.1,
+  "oscillator": { "waveform": "sawtooth", "unison": 2, "spread": 14 },
+  "filter": { "cutoff": 850, "resonance": 1.0, "rolloff": -24, "envAmount": 1.2 },
+  "filterEnv": { "attack": 1.0, "decay": 2.0, "sustain": 0.55, "release": 3.0 },
+  "ampEnv": { "attack": 0.9, "decay": 1.0, "sustain": 0.85, "release": 3.0 },
+  "drive": 0.03,
   "fx": {
-    "chorus": 0.45,
-    "delay": { "wet": 0.12, "time": "8n.", "feedback": 0.32 },
-    "reverb": { "wet": 0.8, "decay": 7.0 }
+    "chorus": 0.28,
+    "delay": { "wet": 0.08, "time": "8n.", "feedback": 0.2 },
+    "reverb": { "wet": 0.58, "decay": 5.5 }
   },
   "glide": 0.03,
   "master": -8

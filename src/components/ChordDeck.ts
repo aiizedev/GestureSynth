@@ -1,10 +1,21 @@
 import type { PanelPerformanceSource } from "../tracking/PanelPerformanceSource";
-import type { Voicing } from "../utils/musicTheory";
+import type { ChordIntent } from "../utils/gestureMapping";
+import type { KeyMode, Voicing } from "../utils/musicTheory";
 import {
   DEGREE_LABELS,
+  describeChord,
+  KEY_MODE_LABELS,
+  KEY_MODES,
   KEY_NAMES,
+  keyDisplayName,
   VOICING_LABELS,
 } from "../utils/musicTheory";
+
+interface PadCell {
+  degree: number;
+  quality: "major" | "minor";
+  chordEl: HTMLElement;
+}
 
 /**
  * Sección de acordes (columna izquierda). Config de tonalidad / calidad /
@@ -12,6 +23,10 @@ import {
  */
 export class ChordDeck {
   readonly element: HTMLElement;
+
+  /** Un pad por grado × calidad; guardamos su etiqueta de cifrado para refrescarla. */
+  private readonly padCells: PadCell[] = [];
+  private readonly unsubscribe: () => void;
 
   constructor(private readonly source: PanelPerformanceSource) {
     this.element = document.createElement("section");
@@ -25,30 +40,93 @@ export class ChordDeck {
     this.element.append(this.buildKeyField());
     this.element.append(this.buildRow());
     this.element.append(this.buildPadDeck());
+
+    // Cada pad muestra el cifrado real que dispara; se recalcula con la tónica,
+    // el modo y el voicing actuales.
+    this.unsubscribe = this.source.subscribe((state) =>
+      this.syncPadChords(state.chord),
+    );
   }
 
   setEnabled(enabled: boolean): void {
     this.element.setAttribute("aria-disabled", String(!enabled));
   }
 
+  dispose(): void {
+    this.unsubscribe();
+  }
+
+  /** Reescribe el cifrado de cada pad para la config de tonalidad vigente. */
+  private syncPadChords(chord: ChordIntent): void {
+    for (const cell of this.padCells) {
+      cell.chordEl.textContent = describeChord({
+        key: chord.key,
+        keyMode: chord.keyMode,
+        degree: cell.degree,
+        quality: cell.quality,
+        voicing: chord.voicing,
+        octave: chord.octave,
+      }).symbol;
+    }
+  }
+
+  /**
+   * Tonalidad = tónica (12 cromáticas) × modo (mayor / menor natural) → las 12
+   * tonalidades mayores y las 12 menores. El modo sólo cambia de qué escala
+   * salen las raíces de los grados; la calidad de cada pad sigue siendo suya.
+   *
+   * La nomenclatura sigue el círculo de quintas: el `value` de cada opción es el
+   * id estable con `#`, pero el texto se reescribe con bemoles en las
+   * tonalidades del lado plano (F, Bb, Eb… / Dm, Gm, Cm…) al cambiar de modo.
+   */
   private buildKeyField(): HTMLDivElement {
-    const field = document.createElement("div");
-    field.className = "field";
-    const label = document.createElement("label");
-    label.textContent = "Tonalidad";
-    const select = document.createElement("select");
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const keyField = document.createElement("div");
+    keyField.className = "field";
+    const keyLabel = document.createElement("label");
+    keyLabel.textContent = "Tonalidad";
+    const keySelect = document.createElement("select");
     for (const name of KEY_NAMES) {
       const opt = document.createElement("option");
       opt.value = name;
-      opt.textContent = `${name} mayor`;
-      select.append(opt);
+      keySelect.append(opt);
     }
-    select.value = "C";
-    select.addEventListener("change", () =>
-      this.source.setChordConfig({ key: select.value }),
+    keySelect.value = "C";
+    keySelect.addEventListener("change", () =>
+      this.source.setChordConfig({ key: keySelect.value }),
     );
-    field.append(label, select);
-    return field;
+    keyField.append(keyLabel, keySelect);
+
+    const modeField = document.createElement("div");
+    modeField.className = "field";
+    const modeLabel = document.createElement("label");
+    modeLabel.textContent = "Modo";
+    const modeSelect = document.createElement("select");
+    for (const mode of KEY_MODES) {
+      const opt = document.createElement("option");
+      opt.value = mode;
+      opt.textContent = KEY_MODE_LABELS[mode];
+      modeSelect.append(opt);
+    }
+    modeSelect.value = "major";
+
+    const relabelKeys = (mode: KeyMode) => {
+      for (const opt of Array.from(keySelect.options)) {
+        opt.textContent = keyDisplayName(opt.value, mode);
+      }
+    };
+    relabelKeys("major");
+    modeSelect.addEventListener("change", () => {
+      const mode = modeSelect.value as KeyMode;
+      relabelKeys(mode);
+      this.source.setChordConfig({ keyMode: mode });
+    });
+    modeField.append(modeLabel, modeSelect);
+
+    row.append(keyField, modeField);
+    return row;
   }
 
   private buildRow(): HTMLDivElement {
@@ -60,7 +138,7 @@ export class ChordDeck {
     const vLabel = document.createElement("label");
     vLabel.textContent = "Voicing";
     const vSelect = document.createElement("select");
-    ([1, 2, 3, 4, 5] as Voicing[]).forEach((v) => {
+    ([1, 2, 3, 4, 5, 6] as Voicing[]).forEach((v) => {
       const opt = document.createElement("option");
       opt.value = String(v);
       opt.textContent = `${v} — ${VOICING_LABELS[v]}`;
@@ -128,7 +206,14 @@ export class ChordDeck {
       pad.type = "button";
       pad.className = "pad";
       pad.dataset.quality = quality;
-      pad.textContent = quality === "major" ? roman : roman.toLowerCase();
+
+      const romanEl = document.createElement("span");
+      romanEl.className = "pad-roman";
+      romanEl.textContent = quality === "major" ? roman : roman.toLowerCase();
+      const chordEl = document.createElement("span");
+      chordEl.className = "pad-chord";
+      pad.append(romanEl, chordEl);
+      this.padCells.push({ degree, quality, chordEl });
 
       const press = (ev: PointerEvent) => {
         if (pad.dataset.held === "true") return;

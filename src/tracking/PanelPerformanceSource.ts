@@ -3,7 +3,14 @@ import type { ChordIntent, GestureState } from "../utils/gestureMapping";
 type Listener = (state: GestureState) => void;
 
 const DEFAULT_STATE: GestureState = {
-  chord: { key: "C", degree: 1, quality: "major", voicing: 1, octave: 0 },
+  chord: {
+    key: "C",
+    keyMode: "major",
+    degree: 1,
+    quality: "major",
+    voicing: 1,
+    octave: 0,
+  },
   volumeDb: -6,
   triggerActive: false,
 };

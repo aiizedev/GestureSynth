@@ -41,11 +41,19 @@ let synth: ReturnType<typeof makeSynth>;
 let panel: TimbrePanel;
 
 beforeEach(() => {
+  localStorage.clear();
   synth = makeSynth();
   panel = new TimbrePanel(synth as unknown as Synth);
   document.body.innerHTML = "";
   document.body.append(panel.element);
 });
+
+function saveRowParts(root: HTMLElement) {
+  const row = root.querySelector<HTMLElement>(".preset-save")!;
+  const input = row.querySelector<HTMLInputElement>("input")!;
+  const buttons = row.querySelectorAll<HTMLButtonElement>("button");
+  return { input, saveBtn: buttons[0], deleteBtn: buttons[1] };
+}
 
 describe("TimbrePanel", () => {
   it("aplica un preset v2 al construirse y muestra 4 macros", () => {
@@ -54,8 +62,8 @@ describe("TimbrePanel", () => {
     expect(panel.element.querySelectorAll(".macros .knob")).toHaveLength(4);
   });
 
-  it("el dropdown ofrece los 14 presets de fábrica agrupados", () => {
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(14);
+  it("el dropdown ofrece los 20 presets de fábrica agrupados", () => {
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
     expect(
       panel.element.querySelectorAll("select optgroup").length,
     ).toBeGreaterThanOrEqual(2);
@@ -104,5 +112,77 @@ describe("TimbrePanel", () => {
     const reverb = knobByLabel(panel.element, "Reverb");
     for (let i = 0; i < 5; i++) pressArrowUp(reverb);
     expect(lastPreset(synth).fx.reverb.wet).toBeGreaterThan(before);
+  });
+});
+
+describe("TimbrePanel — guardar presets del usuario", () => {
+  it("guarda el timbre actual y aparece en el dropdown bajo 'My presets'", () => {
+    const { input, saveBtn } = saveRowParts(panel.element);
+    input.value = "Mi Pad";
+    saveBtn.click();
+
+    const options = panel.element.querySelectorAll("select option");
+    expect(options).toHaveLength(21);
+    const groups = [
+      ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
+    ];
+    expect(groups.some((g) => g.label === "My presets")).toBe(true);
+
+    const select = panel.element.querySelector<HTMLSelectElement>("select")!;
+    expect(select.value).toBe("user:Mi Pad");
+  });
+
+  it("recargar el preset del usuario reaplica su timbre y habilita Delete", () => {
+    const { input, saveBtn, deleteBtn } = saveRowParts(panel.element);
+    for (let i = 0; i < 6; i++) pressArrowUp(knobByLabel(panel.element, "Reverb"));
+    const savedWet = lastPreset(synth).fx.reverb.wet;
+    input.value = "Wet One";
+    saveBtn.click();
+
+    const select = panel.element.querySelector<HTMLSelectElement>("select")!;
+    select.value = "clean";
+    select.dispatchEvent(new Event("change"));
+    expect(lastPreset(synth).fx.reverb.wet).not.toBeCloseTo(savedWet, 5);
+
+    select.value = "user:Wet One";
+    select.dispatchEvent(new Event("change"));
+    expect(lastPreset(synth).fx.reverb.wet).toBeCloseTo(savedWet, 5);
+    expect(deleteBtn.disabled).toBe(false);
+  });
+
+  it("Delete quita el preset del usuario y vuelve a fábrica", () => {
+    const { input, saveBtn, deleteBtn } = saveRowParts(panel.element);
+    input.value = "Temp";
+    saveBtn.click();
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(21);
+
+    deleteBtn.click();
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
+    expect(
+      [
+        ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
+      ].some((g) => g.label === "My presets"),
+    ).toBe(false);
+    expect(deleteBtn.disabled).toBe(true);
+  });
+
+  it("no deja guardar con un nombre de preset de fábrica", () => {
+    const { input, saveBtn } = saveRowParts(panel.element);
+    input.value = "Clean";
+    saveBtn.click();
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("un preset del usuario guardado persiste para un panel nuevo", () => {
+    const { input, saveBtn } = saveRowParts(panel.element);
+    input.value = "Persistente";
+    saveBtn.click();
+
+    const fresh = new TimbrePanel(makeSynth() as unknown as Synth);
+    const values = [...fresh.element.querySelectorAll<HTMLOptionElement>("select option")].map(
+      (o) => o.value,
+    );
+    expect(values).toContain("user:Persistente");
   });
 });

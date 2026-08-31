@@ -33,8 +33,24 @@ export class Synth {
   private readonly limiter: Tone.Limiter;
   private readonly meter: Tone.Meter;
 
+  /**
+   * Techo de voces del PolySynth. Alto a propósito: los presets con release
+   * largo deben poder SOLAPARSE (soltar un acorde y disparar el siguiente sin
+   * esperar a que se apague) sin que Tone descarte el acorde nuevo por falta de
+   * voces.
+   */
+  private static readonly MAX_POLYPHONY = 48;
+  /**
+   * Cuántos acordes ya soltados dejamos resonando a la vez. Al superarlo se
+   * corta el más viejo, para que las colas de release no se acumulen sin fin y
+   * acaben agotando las voces.
+   */
+  private static readonly MAX_RINGING_CHORDS = 8;
+
   /** Frecuencias del acorde actual (Hz). */
   private current: number[] = [];
+  /** Grupos de frecuencias disparados que aún pueden estar sonando (FIFO). */
+  private ringing: number[][] = [];
   /** ¿Hay un pad mantenido pulsado ahora mismo? */
   private held = false;
   private ready = false;
@@ -91,9 +107,23 @@ export class Synth {
         ? new Tone.PolySynth(Tone.FMSynth)
         : new Tone.PolySynth(Tone.MonoSynth)
     ) as Tone.PolySynth<any>;
-    this.poly.maxPolyphony = 12;
+    this.poly.maxPolyphony = Synth.MAX_POLYPHONY;
     this.poly.connect(this.perfVol);
     this.engine = engine;
+    // El motor anterior se desechó: sus colas de sonido ya no existen.
+    this.ringing = [];
+  }
+
+  /**
+   * Dispara un acorde dejando que las colas de los anteriores sigan sonando.
+   * Si se acumulan demasiados acordes solapados, suelta el más viejo primero.
+   */
+  private triggerChord(frequencies: number[]): void {
+    this.poly.triggerAttack(frequencies, undefined, 0.8);
+    this.ringing.push(frequencies.slice());
+    while (this.ringing.length > Synth.MAX_RINGING_CHORDS) {
+      this.poly.triggerRelease(this.ringing.shift()!);
+    }
   }
 
   /**
@@ -117,12 +147,15 @@ export class Synth {
    * nunca aquí: este objeto sólo sabe de sonido.
    */
   setChord(frequencies: number[], glideTime = 0): void {
-    this.current = frequencies.slice();
+    const next = frequencies.slice();
     this.poly.set({ portamento: glideTime });
     if (this.held) {
-      this.poly.releaseAll();
-      this.poly.triggerAttack(this.current, undefined, 0.8);
+      // Cambio de acorde con el pad aún pulsado: suelta SÓLO el acorde saliente
+      // (su cola sigue sonando) y dispara el nuevo encima.
+      this.poly.triggerRelease(this.current);
+      this.triggerChord(next);
     }
+    this.current = next;
   }
 
   /** Volumen de performance (la "mano derecha"), independiente del `master` del preset. */
@@ -133,7 +166,7 @@ export class Synth {
   noteOn(): void {
     if (!this.ready || this.current.length === 0) return;
     this.held = true;
-    this.poly.triggerAttack(this.current, undefined, 0.8);
+    this.triggerChord(this.current);
   }
 
   noteOff(): void {
@@ -201,7 +234,7 @@ export class Synth {
     // Si había un acorde sonando y se cambió de motor, re-dispararlo con el
     // timbre nuevo (el `dispose` del motor anterior cortó las voces).
     if (preset.engine !== this.currentPreset.engine && this.held) {
-      this.poly.triggerAttack(this.current, undefined, 0.8);
+      this.triggerChord(this.current);
     }
 
     this.currentPreset = clonePreset(preset);

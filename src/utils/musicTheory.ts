@@ -7,23 +7,51 @@ import type { ChordIntent } from "./gestureMapping";
  * No conoce Tone.js ni nada de audio: sólo devuelve frecuencias / nombres.
  */
 
-const CHROMATIC = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
+/**
+ * Nomenclatura según el círculo de quintas: las tonalidades del lado sostenido
+ * se escriben con `#`, las del lado bemol con `b`. `SHARP_NAMES` es el id estable
+ * de cada tónica (lo que guarda `ChordIntent.key`); `keyOffset` acepta ambas
+ * grafías.
+ */
+const SHARP_NAMES = [
+  "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
 ] as const;
+const FLAT_NAMES = [
+  "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B",
+] as const;
+const CHROMATIC = SHARP_NAMES;
+
+const NOTE_TO_PC: Record<string, number> = {
+  C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5,
+  "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
+};
+
+/**
+ * Tónicas que se notan con bemoles (lado plano del círculo de quintas), por
+ * índice cromático (0 = C). El resto usa sostenidos.
+ *   mayores bemoles: F Bb Eb Ab Db   ·   menores bemoles: Dm Gm Cm Fm Bbm Ebm
+ */
+const FLAT_MAJOR_TONICS = new Set([1, 3, 5, 8, 10]);
+const FLAT_MINOR_TONICS = new Set([0, 2, 3, 5, 7, 10]);
+
+/** Tabla de nombres (# o b) que corresponde a la tonalidad tónica+modo. */
+function spellingFor(key: string, mode: KeyMode): readonly string[] {
+  const idx = keyOffset(key);
+  const flats =
+    mode === "minor" ? FLAT_MINOR_TONICS.has(idx) : FLAT_MAJOR_TONICS.has(idx);
+  return flats ? FLAT_NAMES : SHARP_NAMES;
+}
+
+/** Nombre de la tónica tal y como se escribe en esa tonalidad (para la UI). */
+export function keyDisplayName(key: string, mode: KeyMode): string {
+  return spellingFor(key, mode)[keyOffset(key)];
+}
 
 /** Semitonos de cada grado de la escala mayor (pasos 2-2-1-2-2-2-1 acumulados). */
 const MAJOR_SCALE_SEMITONES = [0, 2, 4, 5, 7, 9, 11];
+
+/** Semitonos de cada grado de la escala menor natural (pasos 2-1-2-2-1-2-2). */
+const MINOR_SCALE_SEMITONES = [0, 2, 3, 5, 7, 8, 10];
 
 /** MIDI de la tónica en su registro base (C3 = 48), cómodo para acompañamiento. */
 const TONIC_BASE_MIDI = 48;
@@ -33,19 +61,25 @@ const A4_MIDI = 69;
 const A4_HZ = 440;
 
 export const KEY_NAMES = [...CHROMATIC];
+export const KEY_MODES = ["major", "minor"] as const;
+export type KeyMode = (typeof KEY_MODES)[number];
+export const KEY_MODE_LABELS: Record<KeyMode, string> = {
+  major: "mayor",
+  minor: "menor",
+};
 export const DEGREE_LABELS = ["I", "II", "III", "IV", "V", "VI", "VII"] as const;
-export type Voicing = 1 | 2 | 3 | 4 | 5;
+export type Voicing = 1 | 2 | 3 | 4 | 5 | 6;
 export const VOICING_LABELS: Record<Voicing, string> = {
   1: "tríada fundamental (1-3-5)",
-  2: "1ª inversión (3-5-8)",
+  2: "inversión 5-1-3 (5ª al bajo)",
   3: "séptima (maj7 / m7)",
   4: "dominante / dim7",
   5: "aumentada / disminuida (#5 / ♭5)",
+  6: "séptima invertida 5-1-3-7 (5ª al bajo)",
 };
 
 function keyOffset(key: string): number {
-  const idx = CHROMATIC.indexOf(key as (typeof CHROMATIC)[number]);
-  return idx < 0 ? 0 : idx;
+  return NOTE_TO_PC[key] ?? 0;
 }
 
 function midiToFreq(midi: number): number {
@@ -54,7 +88,8 @@ function midiToFreq(midi: number): number {
 
 /**
  * Intervalos (semitonos desde la raíz) para una combinación calidad + voicing.
- * Tabla equivalente a la del repo de referencia (finger count 1..4) + voicing 5.
+ * Tabla equivalente a la del repo de referencia (finger count 1..4) + voicings
+ * 5 (quinta alterada) y 6 (séptima invertida 5-1-3-7).
  */
 export function chordIntervals(
   quality: "major" | "minor",
@@ -65,7 +100,9 @@ export function chordIntervals(
     case 1:
       return [0, third, 7];
     case 2:
-      return [third, 7, 12];
+      // Inversión con la 5ª al bajo (una 8ª abajo) → 5-1-3: queda un poco por
+      // debajo de la forma fundamental, sin llegar a sonar grave.
+      return [-5, 0, third];
     case 3:
       return quality === "major" ? [0, 4, 7, 11] : [0, 3, 7, 10];
     case 4:
@@ -74,16 +111,44 @@ export function chordIntervals(
       // Tríada alterada sin séptima: aumentada (#5) en mayor, disminuida (♭5)
       // en menor.
       return quality === "major" ? [0, 4, 8] : [0, 3, 6];
+    case 6:
+      // Séptima invertida 5-1-3-7 con la 5ª al bajo (una 8ª abajo): un poco más
+      // grave que la séptima en estado fundamental. maj7 en mayor, m7 en menor.
+      return quality === "major" ? [-5, 0, 4, 11] : [-5, 0, 3, 10];
+  }
+}
+
+/** Sufijo del cifrado para el voicing (lo que va tras la raíz y la "m"). */
+function chordExt(quality: "major" | "minor", voicing: Voicing): string {
+  const maj = quality === "major";
+  switch (voicing) {
+    case 2:
+      return "/inv";
+    case 3:
+      return maj ? "maj7" : "7";
+    case 4:
+      return maj ? "7" : "dim7";
+    case 5:
+      return maj ? "(#5)" : "(♭5)";
+    case 6:
+      return maj ? "maj7/inv" : "7/inv";
+    default:
+      return "";
   }
 }
 
 /** MIDI de la raíz del acorde para el grado / tonalidad / octava pedidos. */
 function rootMidi(intent: ChordIntent): number {
   const degreeIndex = Math.min(6, Math.max(0, intent.degree - 1));
+  // El modo de la tonalidad decide de qué escala salen los grados: en C menor
+  // el grado III es E♭ (no E) y el VII es B♭ (no B). La calidad de cada pad es
+  // independiente, así siguen valiendo dominantes secundarias y préstamos.
+  const scale =
+    intent.keyMode === "minor" ? MINOR_SCALE_SEMITONES : MAJOR_SCALE_SEMITONES;
   return (
     TONIC_BASE_MIDI +
     keyOffset(intent.key) +
-    MAJOR_SCALE_SEMITONES[degreeIndex] +
+    scale[degreeIndex] +
     12 * intent.octave
   );
 }
@@ -99,42 +164,38 @@ export function buildChord(intent: ChordIntent): number[] {
 /** Nombre de nota (sin octava) para cada voz del acorde — para el HUD. */
 export function chordNoteNames(intent: ChordIntent): string[] {
   const base = rootMidi(intent);
+  const names = spellingFor(intent.key, intent.keyMode);
   return chordIntervals(intent.quality, intent.voicing).map(
-    (semi) => CHROMATIC[(((base + semi) % 12) + 12) % 12],
+    (semi) => names[(((base + semi) % 12) + 12) % 12],
   );
 }
 
-/** Etiqueta legible del acorde, p. ej. "C  ·  V  ·  maj7". */
+/**
+ * Descripción legible del acorde.
+ *  - `symbol`: cifrado suelto, p. ej. "Cmaj7", "G7", "B°7", "C(#5)".
+ *  - `label`: `symbol` + grado en números romanos, p. ej. "Cmaj7  ·  V".
+ */
 export function describeChord(intent: ChordIntent): {
   root: string;
+  symbol: string;
   label: string;
   notes: string[];
 } {
-  const rootPc = CHROMATIC[(((rootMidi(intent) % 12) + 12) % 12)];
+  const rootPc =
+    spellingFor(intent.key, intent.keyMode)[
+      (((rootMidi(intent) % 12) + 12) % 12)
+    ];
   const qual = intent.quality === "major" ? "" : "m";
-  const ext =
-    intent.voicing === 3
-      ? intent.quality === "major"
-        ? "maj7"
-        : "7"
-      : intent.voicing === 4
-        ? intent.quality === "major"
-          ? "7"
-          : "dim7"
-        : intent.voicing === 5
-          ? intent.quality === "major"
-            ? "(#5)"
-            : "(♭5)"
-          : intent.voicing === 2
-            ? "/inv"
-            : "";
+  const ext = chordExt(intent.quality, intent.voicing);
   // Grado en números romanos: mayúsculas para acordes mayores, minúsculas para
   // menores. Así se leen de un vistazo dominantes secundarias / préstamos.
   const degLabel = DEGREE_LABELS[Math.min(6, Math.max(0, intent.degree - 1))];
   const roman = intent.quality === "major" ? degLabel : degLabel.toLowerCase();
+  const symbol = `${rootPc}${qual}${ext}`;
   return {
     root: rootPc,
-    label: `${rootPc}${qual}${ext ? " " + ext : ""}  ·  ${roman}`,
+    symbol,
+    label: `${symbol}  ·  ${roman}`,
     notes: chordNoteNames(intent),
   };
 }

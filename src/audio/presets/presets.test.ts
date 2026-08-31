@@ -59,6 +59,32 @@ describe("presets de fábrica", () => {
     assertValid(PRESETS.ballad);
     assertValid(PRESETS.coldbells);
   });
+
+  it("el banco 'Inspiration' recrea el synth de referencia: onda + filtro estático 1200 Hz, sin FX", () => {
+    const bank = PRESET_GROUPS.find((g) => g.label.includes("Inspiration"))!;
+    expect(bank.names).toEqual(["warmsynth", "brightsynth", "retrosynth"]);
+    // Warm y Retro se mantienen fieles a la referencia (Bright fue reajustado
+    // por el usuario a un pad brillante propio).
+    const faithful = [
+      ["warmsynth", "triangle"],
+      ["retrosynth", "square"],
+    ] as const;
+    for (const [name, wave] of faithful) {
+      const p = PRESETS[name];
+      assertValid(p);
+      expect(p.engine).toBe("subtractive");
+      expect(p.oscillator.waveform).toBe(wave);
+      expect(p.oscillator.unison).toBe(0);
+      expect(p.filter.cutoff).toBe(1200);
+      expect(p.filter.envAmount).toBe(0); // filtro estático, como la referencia
+      expect(p.fx.reverb.wet).toBe(0);
+      expect(p.fx.delay.wet).toBe(0);
+      expect(p.fx.chorus).toBe(0);
+    }
+    assertValid(PRESETS.brightsynth);
+    expect(PRESETS.brightsynth.engine).toBe("subtractive");
+    expect(PRESETS.brightsynth.oscillator.waveform).toBe("sawtooth");
+  });
 });
 
 describe("migratePreset", () => {

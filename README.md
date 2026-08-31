@@ -43,7 +43,7 @@ npm run dev        # abre http://localhost:5173
 
 ```bash
 npm run build      # tsc + build de producción
-npm test           # 34 tests (Vitest)
+npm test           # 58 tests (Vitest)
 ```
 
 ---
@@ -82,7 +82,7 @@ y mañana `HandTracker`, con la misma interfaz `subscribe(cb)` / `dispose()`.
 `Synth` y **no cambia** cuando se conecte la cámara.
 
 ```ts
-interface ChordIntent  { key: string; degree: 1..7; quality: "major"|"minor"; voicing: 1..5; octave: -1..1 }
+interface ChordIntent  { key: string; keyMode: "major"|"minor"; degree: 1..7; quality: "major"|"minor"; voicing: 1..6; octave: -1..1 }
 interface GestureState { chord: ChordIntent; volumeDb: number; triggerActive: boolean }
 ```
 
@@ -106,8 +106,10 @@ propia); el motor FM no filtra.
 | Control | Opciones |
 |---|---|
 | **Tonalidad** | 12 tónicas cromáticas |
-| **Grado** | pads I–VII (fila mayor) + i–vii (fila menor); *hold-to-play* |
-| **Voicing** | 1–5 (ver tabla) |
+| **Modo** | mayor / menor natural → las 12 tonalidades mayores y las 12 menores (cambia de qué escala salen las raíces de los grados) |
+| **Nomenclatura** | sigue el círculo de quintas: las tonalidades del lado bemol (F, B♭, E♭, A♭, D♭ / Dm, Gm, Cm, Fm, B♭m, E♭m) se escriben con `b`; el resto con `#`. Los nombres de nota del HUD heredan esa grafía |
+| **Grado** | pads I–VII (fila mayor) + i–vii (fila menor); *hold-to-play*. Cada pad muestra el cifrado real que dispara (p. ej. `C`, `Dm`, `Gmaj7`), recalculado con la tónica / el modo / el voicing vigentes |
+| **Voicing** | 1–6 (ver tabla) |
 | **Octava** | −1 / 0 / +1 |
 
 Cada pad lleva su propia calidad, así se combinan libremente acordes mayores y
@@ -116,10 +118,11 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 | Voicing | Nombre | Mayor | Menor |
 |:---:|---|---|---|
 | **1** | Tríada fundamental | R · 3 · 5 | R · ♭3 · 5 |
-| **2** | 1ª inversión | 3 · 5 · 8 | ♭3 · 5 · 8 |
+| **2** | Inversión 5-1-3 *(5ª al bajo, 8ª abajo)* | 5 · 1 · 3 | 5 · 1 · ♭3 |
 | **3** | Séptima | maj7 | m7 |
 | **4** | Dominante / disminuido | 7 | °7 |
 | **5** | Quinta alterada *(sin séptima)* | aumentado ♯5 | disminuido ♭5 |
+| **6** | Séptima invertida 5-1-3-7 *(5ª al bajo, 8ª abajo)* | maj7/inv | m7/inv |
 
 ### Timbre — `TimbrePanel`
 
@@ -132,11 +135,16 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 - **Visualizador** (`TimbreScope`): 3 paneles dibujados solo con los números del
   preset — forma de onda del oscilador (reacciona al tipo de onda y, en FM, a
   Ratio / FM Amount), respuesta del filtro y forma de la envolvente.
+- **Guardar presets propios**: escribe un nombre y pulsa *Save* → el timbre
+  actual se guarda en `localStorage` (`audio/presets/userStore.ts`) con el mismo
+  esquema `TimbrePreset` v2, y aparece en el grupo *My presets* del dropdown;
+  *Delete* lo quita. Un preset guardado se puede copiar tal cual a un `.json` del
+  repo.
 - Todo pasa por `Synth.setTimbre(preset)`; la UI nunca toca un nodo de Tone.
 
 ### Presets
 
-14 presets de fábrica en dos grupos del dropdown:
+20 presets de fábrica en tres grupos del dropdown:
 
 | Grupo | Preset | Motor | Carácter |
 |---|---|:---:|---|
@@ -148,16 +156,29 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 | | Gritty | sustr. | cuadrada saturada |
 | | E-Piano | **FM** | piano eléctrico tipo DX |
 | | Bells | **FM** | campanas metálicas |
-| **Joji / ballad** | Ballad Lead | sustr. | pad-lead cálido moderno *(ref. «Die For You»)* |
-| | Hazy Pad | sustr. | pad lento y difuso *(«Slow Dancing…» / «Run»)* |
-| | Mellow Rhodes | **FM** | Rhodes filtrado *(«Demons» / «Test Drive»)* |
-| | Cold Bells | **FM** | campana FM fría *(«Ew» / «Pretty Boy»)* |
-| | Felt Keys | sustr. | teclas suaves *(≈ «Glimpse of Us»)* |
-| | Dark Wash | sustr. | cama de fondo con reverb enorme |
+| **Joji / ballad** | Ballad Lead | sustr. | pad-lead cálido y abierto *(ref. «Die For You»)* |
+| | Hazy Pad | sustr. | pad lento, con cuerpo y algo de aire *(«Run» / «Slow Dancing…»)* |
+| | Slow Dance | sustr. | pad saw amplio y profundo, reverb contenida *(«Slow Dancing in the Dark»)* |
+| | Mellow Rhodes | **FM** | Rhodes con cola y brillo *(«Demons» / «Test Drive»)* |
+| | Cold Bells | **FM** | campana FM más tonal, menos metálica *(«Ew» / «Pretty Boy»)* |
+| | Felt Keys | sustr. | teclas suaves con algo de sustain *(≈ «Glimpse of Us»)* |
+| | Dark Wash | sustr. | colchón de fondo, oscuro pero con el acorde legible |
+| | Warm Dance | sustr. | mezcla de *Warm Synth* × *Slow Dance*: triangular con unísono suave, filtro con movimiento leve, reverb media, entrada blanda |
+| | Dark Bed | sustr. | pad oscuro y contenido para acordes con séptima: saw filtrado a 640 Hz, poco unísono, reverb media, master −15 dB (colchón de fondo) |
+| **Inspiration · gesture-synth** | Warm Synth | sustr. | triangular a través de un pasa-bajos estático 1200 Hz, sin FX |
+| | Bright Synth | sustr. | sierra abierta (corte ~6 kHz), ataque muy lento tipo swell, reverb corta |
+| | Retro Synth | sustr. | onda cuadrada, mismo pasa-bajos estático que Warm Synth |
 
-> El grano de casete/lo-fi que define esos discos necesita nodos que el motor aún
-> no tiene (BitCrusher/Chebyshev, ruido, EQ3). Los presets clavan el carácter
-> (pad/EP/campana), no la degradación. Ver *Roadmap*.
+> **Warm Synth** y **Retro Synth** recrean el synth de referencia
+> [`ericwei97-cloud/gesture-synth`](https://github.com/ericwei97-cloud/gesture-synth):
+> un solo oscilador → lowpass 1200 Hz / Q 0.7, ataque instantáneo, sin FX; el
+> preset **es** la forma de onda. **Bright Synth** se reajustó a un pad brillante
+> propio (filtro abierto, swell largo, algo de reverb/delay).
+
+> Estos presets van con **poca distorsión, algo más de brillo y cuerpo** para
+> que el acorde sea el protagonista y no la textura. El grano de casete/lo-fi de
+> esos discos necesita nodos que el motor aún no tiene (BitCrusher/Chebyshev,
+> ruido, EQ3). Ver *Roadmap*.
 
 ---
 
@@ -180,7 +201,8 @@ src/
 │   └── presets/
 │       ├── types.ts             TimbrePreset v2 (esquema anidado + version + engine)
 │       ├── index.ts             carga, PRESET_GROUPS, migratePreset (v1 → v2), clonePreset
-│       └── *.json               14 presets
+│       ├── userStore.ts         presets del usuario en localStorage (mismo esquema v2)
+│       └── *.json               20 presets de fábrica
 ├── tracking/
 │   ├── PanelPerformanceSource.ts  Temporal: eventos del panel DAW → GestureState
 │   └── HandTracker.ts             stub (MediaPipe Hand Landmarker, roadmap)
@@ -222,11 +244,12 @@ happy-dom).
 **Hecho**
 
 - [x] Motor de audio aislado: `Synth` opaco, cadena FX, medidor
-- [x] Acordes por grado × calidad × voicing (1–5) × octava
+- [x] Acordes por grado × calidad × voicing (1–6) × octava
 - [x] Panel de timbre: presets, macros, sección avanzada, potenciómetros
 - [x] Visualizador de onda / filtro / envolvente
 - [x] Motor conmutable sustractivo ↔ FM por preset
-- [x] 14 presets (banco básico + banco «Joji / ballad»)
+- [x] 20 presets de fábrica (básico + «Joji / ballad» + «Inspiration»)
+- [x] Guardar / borrar presets propios (localStorage, esquema v2 serializable)
 - [x] Contrato `GestureState` congelado + `PanelPerformanceSource` temporal
 
 **Siguiente**

@@ -9,8 +9,17 @@ import {
   PRESETS,
   type PresetName,
 } from "../audio/presets";
+import {
+  deleteUserPreset,
+  getUserPreset,
+  listUserPresets,
+  saveUserPreset,
+  type UserPreset,
+} from "../audio/presets/userStore";
 import { Knob } from "./Knob";
 import { TimbreScope } from "./TimbreScope";
+
+const USER_VALUE_PREFIX = "user:";
 
 const WAVEFORMS: Array<[Waveform, string]> = [
   ["sine", "Sine"],
@@ -50,6 +59,13 @@ export class TimbrePanel {
   private oscFmWrap!: HTMLDivElement;
   private filterSection!: HTMLElement;
 
+  /** Presets del usuario (localStorage) + selección activa si es uno de ellos. */
+  private userPresets: UserPreset[] = listUserPresets();
+  private currentUserName: string | null = null;
+  private presetSelect!: HTMLSelectElement;
+  private nameInput!: HTMLInputElement;
+  private deleteBtn!: HTMLButtonElement;
+
   constructor(private readonly synth: Synth) {
     this.current = migratePreset(clonePreset(PRESETS[PRESET_NAMES[0]]));
 
@@ -77,12 +93,57 @@ export class TimbrePanel {
 
   // --- Preset ------------------------------------------------------------
 
-  private buildPresetField(): HTMLDivElement {
+  private buildPresetField(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+
     const field = document.createElement("div");
     field.className = "field";
     const label = document.createElement("label");
     label.textContent = "Preset";
-    const select = document.createElement("select");
+    this.presetSelect = document.createElement("select");
+    this.presetSelect.addEventListener("change", () => {
+      const value = this.presetSelect.value;
+      if (value.startsWith(USER_VALUE_PREFIX)) {
+        this.loadUserPreset(value.slice(USER_VALUE_PREFIX.length));
+      } else {
+        this.loadPreset(value as PresetName);
+      }
+    });
+    field.append(label, this.presetSelect);
+
+    // Fila de guardado: nombre + Save + Delete.
+    const saveRow = document.createElement("div");
+    saveRow.className = "preset-save";
+    this.nameInput = document.createElement("input");
+    this.nameInput.type = "text";
+    this.nameInput.placeholder = "Preset name";
+    this.nameInput.setAttribute("aria-label", "New preset name");
+    this.nameInput.addEventListener("input", () =>
+      this.nameInput.removeAttribute("aria-invalid"),
+    );
+    this.nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.saveCurrent();
+    });
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "save-primary";
+    saveBtn.textContent = "Save";
+    saveBtn.addEventListener("click", () => this.saveCurrent());
+    this.deleteBtn = document.createElement("button");
+    this.deleteBtn.type = "button";
+    this.deleteBtn.textContent = "Delete";
+    this.deleteBtn.addEventListener("click", () => this.deleteCurrent());
+    saveRow.append(this.nameInput, saveBtn, this.deleteBtn);
+
+    frag.append(field, saveRow);
+    this.refreshPresetOptions();
+    return frag;
+  }
+
+  /** Reconstruye las `<option>` del dropdown: fábrica + "My presets". */
+  private refreshPresetOptions(): void {
+    const select = this.presetSelect;
+    select.textContent = "";
     for (const group of PRESET_GROUPS) {
       const og = document.createElement("optgroup");
       og.label = group.label;
@@ -94,19 +155,79 @@ export class TimbrePanel {
       }
       select.append(og);
     }
-    select.addEventListener("change", () =>
-      this.loadPreset(select.value as PresetName),
-    );
-    field.append(label, select);
-    return field;
+    if (this.userPresets.length > 0) {
+      const og = document.createElement("optgroup");
+      og.label = "My presets";
+      for (const { name } of this.userPresets) {
+        const opt = document.createElement("option");
+        opt.value = USER_VALUE_PREFIX + name;
+        opt.textContent = name;
+        og.append(opt);
+      }
+      select.append(og);
+    }
   }
 
   private loadPreset(name: PresetName): void {
     this.current = migratePreset(clonePreset(PRESETS[name]));
+    this.currentUserName = null;
+    this.presetSelect.value = name;
+    this.syncSaveRow();
     this.refreshEngineUI();
     this.syncMacros();
     this.syncAdvanced();
     this.pushTimbre();
+  }
+
+  private loadUserPreset(name: string): void {
+    const stored = getUserPreset(name);
+    if (!stored) {
+      // El preset ya no existe (borrado en otra pestaña): recarga el primero.
+      this.refreshPresetOptions();
+      this.loadPreset(PRESET_NAMES[0]);
+      return;
+    }
+    this.current = migratePreset(clonePreset(stored));
+    this.currentUserName = name;
+    this.presetSelect.value = USER_VALUE_PREFIX + name;
+    this.nameInput.value = name;
+    this.syncSaveRow();
+    this.refreshEngineUI();
+    this.syncMacros();
+    this.syncAdvanced();
+    this.pushTimbre();
+  }
+
+  /** Guarda el timbre actual como preset del usuario con el nombre del input. */
+  private saveCurrent(): void {
+    const name = this.nameInput.value.trim();
+    const clashesFactory =
+      PRESET_NAMES.includes(name as PresetName) ||
+      Object.values(PRESET_LABELS).some(
+        (l) => l.toLowerCase() === name.toLowerCase(),
+      );
+    if (!name || clashesFactory) {
+      this.nameInput.setAttribute("aria-invalid", "true");
+      this.nameInput.focus();
+      return;
+    }
+    this.userPresets = saveUserPreset(name, this.current);
+    this.currentUserName = name;
+    this.refreshPresetOptions();
+    this.presetSelect.value = USER_VALUE_PREFIX + name;
+    this.syncSaveRow();
+  }
+
+  private deleteCurrent(): void {
+    if (!this.currentUserName) return;
+    this.userPresets = deleteUserPreset(this.currentUserName);
+    this.refreshPresetOptions();
+    this.loadPreset(PRESET_NAMES[0]);
+  }
+
+  /** Habilita "Delete" sólo cuando la selección activa es un preset del usuario. */
+  private syncSaveRow(): void {
+    this.deleteBtn.disabled = this.currentUserName === null;
   }
 
   private pushTimbre(): void {

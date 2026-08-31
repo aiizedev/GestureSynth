@@ -1,5 +1,5 @@
 import type { Synth } from "../audio/Synth";
-import type { Voicing } from "./musicTheory";
+import type { KeyMode, Voicing } from "./musicTheory";
 import { buildChord } from "./musicTheory";
 
 /**
@@ -14,10 +14,12 @@ import { buildChord } from "./musicTheory";
 export interface ChordIntent {
   /** Tónica de la tonalidad, p. ej. "C". */
   key: string;
-  /** Grado de la escala mayor, 1..7 (I..VII) — es la raíz del acorde. */
+  /** Modo de la tonalidad: 12 tonalidades mayores + 12 menores (escala natural). */
+  keyMode: KeyMode;
+  /** Grado de la escala de la tonalidad, 1..7 (I..VII) — es la raíz del acorde. */
   degree: number;
   quality: "major" | "minor";
-  /** Voicing / extensión, 1..4 (equivale al finger count del repo de referencia). */
+  /** Voicing / extensión, 1..6 (ver `VOICING_LABELS`). */
   voicing: Voicing;
   /** Desplazamiento de octava, típicamente -1..+1. */
   octave: number;
@@ -34,6 +36,7 @@ export interface GestureState {
 function chordChanged(a: ChordIntent, b: ChordIntent): boolean {
   return (
     a.key !== b.key ||
+    a.keyMode !== b.keyMode ||
     a.degree !== b.degree ||
     a.quality !== b.quality ||
     a.voicing !== b.voicing ||

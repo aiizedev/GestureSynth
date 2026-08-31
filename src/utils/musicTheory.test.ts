@@ -5,10 +5,12 @@ import {
   chordIntervals,
   chordNoteNames,
   describeChord,
+  keyDisplayName,
 } from "./musicTheory";
 
 const base: ChordIntent = {
   key: "C",
+  keyMode: "major",
   degree: 1,
   quality: "major",
   voicing: 1,
@@ -34,6 +36,11 @@ describe("chordIntervals", () => {
   it("voicing 5 es tríada alterada sin séptima: aumentada en mayor, disminuida en menor", () => {
     expect(chordIntervals("major", 5)).toEqual([0, 4, 8]);
     expect(chordIntervals("minor", 5)).toEqual([0, 3, 6]);
+  });
+
+  it("voicing 6 es la séptima invertida 5-1-3-7 (5ª al bajo, 8ª abajo)", () => {
+    expect(chordIntervals("major", 6)).toEqual([-5, 0, 4, 11]);
+    expect(chordIntervals("minor", 6)).toEqual([-5, 0, 3, 10]);
   });
 });
 
@@ -65,6 +72,32 @@ describe("chordNoteNames", () => {
       chordNoteNames({ ...base, quality: "minor", voicing: 5 }),
     ).toEqual(["C", "D#", "F#"]);
   });
+
+  it("C mayor grado I voicing 6 → G C E B (maj7 invertida 5-1-3-7)", () => {
+    expect(chordNoteNames({ ...base, voicing: 6 })).toEqual(["G", "C", "E", "B"]);
+  });
+
+  it("voicing 2 es la inversión 5-1-3 (5ª al bajo), un poco por debajo de la fundamental", () => {
+    expect(chordNoteNames({ ...base, voicing: 2 })).toEqual(["G", "C", "E"]);
+    const inv = buildChord({ ...base, voicing: 2 });
+    const root = buildChord({ ...base, voicing: 1 });
+    // El bajo (la 5ª) queda por debajo de la tónica, pero la nota más aguda
+    // sigue siendo la 3ª como en la forma fundamental → sólo un poco más grave.
+    expect(Math.min(...inv)).toBeLessThan(root[0]);
+    expect(Math.max(...inv)).toBeCloseTo(root[1], 5);
+  });
+
+  it("C · grado II menor voicing 6 → A D F C (Dm7 invertida 5-1-3-7)", () => {
+    expect(
+      chordNoteNames({ ...base, degree: 2, quality: "minor", voicing: 6 }),
+    ).toEqual(["A", "D", "F", "C"]);
+  });
+
+  it("voicing 6 suena un poco más grave que la séptima en estado fundamental", () => {
+    const inv = buildChord({ ...base, voicing: 6 });
+    const seventh = buildChord({ ...base, voicing: 3 });
+    expect(Math.min(...inv)).toBeLessThan(seventh[0]);
+  });
 });
 
 describe("buildChord", () => {
@@ -88,10 +121,11 @@ describe("buildChord", () => {
 });
 
 describe("describeChord", () => {
-  it("etiqueta grado V mayor voicing 3 como G maj7", () => {
+  it("etiqueta grado V mayor voicing 3 como Gmaj7", () => {
     const d = describeChord({ ...base, degree: 5, voicing: 3 });
     expect(d.root).toBe("G");
-    expect(d.label).toContain("G maj7");
+    expect(d.symbol).toBe("Gmaj7");
+    expect(d.label).toContain("Gmaj7");
     expect(d.label).toContain("V");
   });
 
@@ -112,6 +146,90 @@ describe("describeChord", () => {
     const min = describeChord({ ...base, degree: 2, quality: "minor", voicing: 5 });
     expect(min.label).toContain("(♭5)");
     expect(min.label).toContain("ii");
+  });
+
+  it("voicing 6 se etiqueta como séptima en 1ª inversión (maj7/inv, m7/inv)", () => {
+    expect(describeChord({ ...base, voicing: 6 }).symbol).toBe("Cmaj7/inv");
+    expect(
+      describeChord({ ...base, degree: 2, quality: "minor", voicing: 6 }).symbol,
+    ).toBe("Dm7/inv");
+  });
+});
+
+describe("modo de la tonalidad: 12 mayores + 12 menores", () => {
+  it("en modo menor los grados salen de la escala menor natural (A menor: I-VII = A B C D E F G)", () => {
+    const roots = [1, 2, 3, 4, 5, 6, 7].map(
+      (degree) =>
+        chordNoteNames({
+          ...base,
+          key: "A",
+          keyMode: "minor",
+          degree,
+        })[0],
+    );
+    expect(roots).toEqual(["A", "B", "C", "D", "E", "F", "G"]);
+  });
+
+  it("C menor grado III = Eb y grado VII = Bb (no E ni B, y con bemoles)", () => {
+    expect(
+      chordNoteNames({ ...base, keyMode: "minor", degree: 3 })[0],
+    ).toBe("Eb");
+    expect(
+      chordNoteNames({ ...base, keyMode: "minor", degree: 7 })[0],
+    ).toBe("Bb");
+  });
+
+  it("el modo mayor no cambia (regresión): C mayor grado VI = A", () => {
+    expect(chordNoteNames({ ...base, degree: 6 })[0]).toBe("A");
+  });
+
+  it("misma tónica, distinto modo: I comparte raíz, III no", () => {
+    const maj = buildChord({ ...base, degree: 3 });
+    const min = buildChord({ ...base, keyMode: "minor", degree: 3 });
+    expect(buildChord(base)[0]).toBeCloseTo(
+      buildChord({ ...base, keyMode: "minor" })[0],
+      5,
+    );
+    expect(min[0]).toBeLessThan(maj[0]);
+  });
+});
+
+describe("nomenclatura según el círculo de quintas", () => {
+  it("las tonalidades mayores del lado bemol se escriben con b", () => {
+    expect(keyDisplayName("A#", "major")).toBe("Bb");
+    expect(keyDisplayName("D#", "major")).toBe("Eb");
+    expect(keyDisplayName("C#", "major")).toBe("Db");
+    expect(keyDisplayName("G#", "major")).toBe("Ab");
+    expect(keyDisplayName("F", "major")).toBe("F");
+  });
+
+  it("las tonalidades del lado sostenido mantienen #", () => {
+    expect(keyDisplayName("F#", "major")).toBe("F#");
+    expect(keyDisplayName("A", "major")).toBe("A");
+    expect(keyDisplayName("C#", "minor")).toBe("C#");
+    expect(keyDisplayName("G#", "minor")).toBe("G#");
+  });
+
+  it("una misma tónica cambia de grafía según el modo (Db mayor / C# menor)", () => {
+    expect(keyDisplayName("C#", "major")).toBe("Db");
+    expect(keyDisplayName("C#", "minor")).toBe("C#");
+  });
+
+  it("las notas del acorde heredan la grafía de la tonalidad", () => {
+    // F mayor, grado IV = Bb mayor → Bb D F (no A#).
+    expect(
+      chordNoteNames({ ...base, key: "F", degree: 4 }),
+    ).toEqual(["Bb", "D", "F"]);
+    // E mayor, grado I → E G# B (lado sostenido).
+    expect(
+      chordNoteNames({ ...base, key: "E", degree: 1 }),
+    ).toEqual(["E", "G#", "B"]);
+  });
+
+  it("describeChord usa la raíz con la grafía de la tonalidad", () => {
+    const d = describeChord({ ...base, key: "D#", degree: 1 });
+    expect(d.root).toBe("Eb");
+    expect(d.label).toContain("Eb");
   });
 });
 
