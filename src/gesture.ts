@@ -5,7 +5,7 @@ import { HandLandmarkerSource } from "./tracking/HandLandmarker";
 import { GestureView } from "./components/GestureView";
 import { PresetSelector } from "./components/PresetSelector";
 import { makeGestureApplier } from "./utils/gestureMapping";
-import type { ChordIntent } from "./utils/gestureMapping";
+import { makeChordStabilizer } from "./tracking/chordStabilizer";
 
 /**
  * Entry de `/gesture` (fase 2): cámara → `HandLandmarkerSource` → `GestureView`,
@@ -30,16 +30,11 @@ const presets = new PresetSelector({
   onChange: (preset) => synth.setTimbre(preset),
 });
 
-// `makeGestureApplier` siempre necesita un acorde; cuando no hay lectura fiable
-// (sin mano izquierda) mantenemos el último y bajamos el trigger.
-let lastChord: ChordIntent = {
-  key: "C",
-  keyMode: "major",
-  degree: 1,
-  quality: "major",
-  voicing: 1,
-  octave: 0,
-};
+// Filtro temporal entre la lectura cruda de las manos y el `Synth`: confirma un
+// acorde nuevo solo tras varios frames iguales (mata los grados intermedios de
+// una transición) y da histéresis al note on/off (un frame suelto sin mano no
+// re-dispara). Mantiene el último acorde confirmado cuando se pierde la mano.
+const stabilize = makeChordStabilizer();
 
 const view = new GestureView({
   leftControls: [presets.element],
@@ -49,11 +44,12 @@ const view = new GestureView({
     startLoop();
   },
   onChord: (chord) => {
-    if (chord) lastChord = chord;
+    const stable = stabilize(chord);
+    if (!stable) return;
     applyGesture({
-      chord: lastChord,
+      chord: stable.chord,
       volumeDb: PERFORMANCE_VOLUME_DB,
-      triggerActive: chord !== null,
+      triggerActive: stable.triggerActive,
     });
   },
 });

@@ -62,8 +62,8 @@ describe("TimbrePanel", () => {
     expect(panel.element.querySelectorAll(".macros .knob")).toHaveLength(4);
   });
 
-  it("el dropdown ofrece los 20 presets de fábrica agrupados", () => {
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
+  it("el dropdown ofrece los 23 presets de fábrica agrupados", () => {
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
     expect(
       panel.element.querySelectorAll("select optgroup").length,
     ).toBeGreaterThanOrEqual(2);
@@ -122,7 +122,7 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     saveBtn.click();
 
     const options = panel.element.querySelectorAll("select option");
-    expect(options).toHaveLength(21);
+    expect(options).toHaveLength(24);
     const groups = [
       ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
     ];
@@ -154,10 +154,10 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     const { input, saveBtn, deleteBtn } = saveRowParts(panel.element);
     input.value = "Temp";
     saveBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(21);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(24);
 
     deleteBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
     expect(
       [
         ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
@@ -170,7 +170,7 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     const { input, saveBtn } = saveRowParts(panel.element);
     input.value = "Clean";
     saveBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(20);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
     expect(input.getAttribute("aria-invalid")).toBe("true");
   });
 

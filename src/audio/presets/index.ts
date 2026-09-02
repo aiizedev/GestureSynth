@@ -10,6 +10,9 @@ import bells from "./bells.json";
 import hazypad from "./hazypad.json";
 import slowdance from "./slowdance.json";
 import ballad from "./ballad.json";
+import synthpad from "./synthpad.json";
+import synthpadthin from "./synthpadthin.json";
+import crystalair from "./crystalair.json";
 import rhodes from "./rhodes.json";
 import coldbells from "./coldbells.json";
 import feltkeys from "./feltkeys.json";
@@ -32,6 +35,9 @@ export type PresetName =
   | "hazypad"
   | "slowdance"
   | "ballad"
+  | "synthpad"
+  | "synthpadthin"
+  | "crystalair"
   | "rhodes"
   | "coldbells"
   | "feltkeys"
@@ -54,6 +60,9 @@ export const PRESET_GROUPS: Array<{ label: string; names: PresetName[] }> = [
     label: "Joji / ballad",
     names: [
       "ballad",
+      "synthpad",
+      "synthpadthin",
+      "crystalair",
       "hazypad",
       "slowdance",
       "rhodes",
@@ -86,6 +95,9 @@ export const PRESET_LABELS: Record<PresetName, string> = {
   epiano: "E-Piano",
   bells: "Bells",
   ballad: "Ballad Lead",
+  synthpad: "Synth Pad",
+  synthpadthin: "Synth Pad Thin",
+  crystalair: "Crystal Air",
   hazypad: "Hazy Pad",
   slowdance: "Slow Dance",
   rhodes: "Mellow Rhodes",
@@ -111,6 +123,9 @@ export const PRESETS: Record<PresetName, TimbrePreset> = {
   hazypad: hazypad as TimbrePreset,
   slowdance: slowdance as TimbrePreset,
   ballad: ballad as TimbrePreset,
+  synthpad: synthpad as TimbrePreset,
+  synthpadthin: synthpadthin as TimbrePreset,
+  crystalair: crystalair as TimbrePreset,
   rhodes: rhodes as TimbrePreset,
   coldbells: coldbells as TimbrePreset,
   feltkeys: feltkeys as TimbrePreset,

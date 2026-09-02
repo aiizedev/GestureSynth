@@ -150,10 +150,19 @@ export class Synth {
     const next = frequencies.slice();
     this.poly.set({ portamento: glideTime });
     if (this.held) {
-      // Cambio de acorde con el pad aún pulsado: suelta SÓLO el acorde saliente
-      // (su cola sigue sonando) y dispara el nuevo encima.
-      this.poly.triggerRelease(this.current);
-      this.triggerChord(next);
+      // Cambio de acorde con el pad aún pulsado: LEGATO por voz. Suelta sólo las
+      // notas que se van, ataca sólo las nuevas y deja sonar las comunes SIN
+      // re-dispararlas. Antes se soltaba el acorde entero y se re-atacaba: como
+      // `PolySynth` asigna una voz por frecuencia, el release del saliente
+      // apagaba la voz de una nota compartida que el entrante acababa de tomar
+      // → notas mudas y un clic en cada cambio.
+      const key = (f: number) => Math.round(f * 100) / 100;
+      const nextKeys = new Set(next.map(key));
+      const currentKeys = new Set(this.current.map(key));
+      const releasing = this.current.filter((f) => !nextKeys.has(key(f)));
+      const attacking = next.filter((f) => !currentKeys.has(key(f)));
+      if (releasing.length) this.poly.triggerRelease(releasing);
+      if (attacking.length) this.poly.triggerAttack(attacking, undefined, 0.8);
     }
     this.current = next;
   }

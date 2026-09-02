@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "engine": "subtractive",
+  "oscillator": { "waveform": "sawtooth", "unison": 0, "spread": 16 },
+  "filter": { "cutoff": 6800, "resonance": 0.25, "rolloff": -24, "envAmount": 0.5 },
+  "filterEnv": { "attack": 2.2, "decay": 3.0, "sustain": 0.6, "release": 5.0 },
+  "ampEnv": { "attack": 1.8, "decay": 2.4, "sustain": 0.35, "release": 6.0 },
+  "drive": 0,
+  "fx": {
+    "chorus": 0.3,
+    "delay": { "wet": 0.18, "time": "8n.", "feedback": 0.3 },
+    "reverb": { "wet": 0.76, "decay": 9.5 }
+  },
+  "glide": 0,
+  "master": -19
+}
