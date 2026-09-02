@@ -500,3 +500,275 @@ select {
   color: var(--accent-2);
   font-weight: 650;
 }
+
+/* --- /gesture · cámara a pantalla completa (estilo ref. Eric Wei) ---- */
+body[data-page="gesture"] {
+  overflow: hidden;
+}
+
+.gesture-view {
+  position: fixed;
+  inset: 0;
+  background: #111;
+  /* Color principal de la página; lo cambia el menú de opciones. */
+  --gesture-accent: #e8a13d;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+.hand-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.hand-overlay canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: filter 0.4s ease;
+}
+
+.hand-overlay canvas.dimmed {
+  filter: grayscale(1) brightness(0.55);
+}
+
+/* Columna izquierda (tonalidad + preset + "crear sonidos"), arriba a la
+   izquierda y por encima del overlay de arranque para poder usarla antes de
+   encender la cámara. */
+.gesture-left {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.gesture-keys {
+  display: flex;
+  gap: 6px;
+}
+
+.gesture-left select {
+  appearance: none;
+  background: #1a1a1a;
+  color: var(--gesture-accent);
+  border: 1px solid #3a3428;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.gesture-keys select {
+  min-width: 78px;
+  text-align: center;
+}
+
+.gesture-presets select {
+  min-width: 150px;
+  max-width: 220px;
+}
+
+.gesture-create {
+  color: var(--gesture-accent);
+  font-size: 12px;
+  text-decoration: none;
+  opacity: 0.85;
+  padding: 3px 4px;
+}
+
+.gesture-create:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* HUD de "información avanzada", abajo a la izquierda (oculto por defecto) */
+.gesture-hud {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 20, 20, 0.85),
+    rgba(20, 20, 20, 0.55)
+  );
+  color: var(--gesture-accent);
+  font-size: 13px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.gesture-hud[hidden] {
+  display: none;
+}
+
+.gesture-hud .hud-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.gesture-hud .hud-dim {
+  opacity: 0.4;
+}
+
+/* Overlay de arranque (click para activar la cámara) */
+.gesture-start {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding-bottom: 12vh;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.gesture-start.hidden {
+  display: none;
+}
+
+.gesture-start .start-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.gesture-start .start-text {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.gesture-start .start-text.start-error {
+  color: var(--gesture-accent);
+}
+
+/* Menú de opciones (⚙), arriba a la derecha (por encima del overlay de arranque) */
+.gesture-options {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+}
+
+.gesture-options-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #3a3428;
+  background: rgba(20, 20, 20, 0.85);
+  color: var(--gesture-accent);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gesture-options-panel {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  border: 1px solid var(--gesture-accent);
+  color: var(--gesture-accent);
+  font-size: 13px;
+}
+
+.gesture-options-panel[hidden] {
+  display: none;
+}
+
+.gesture-options-panel .options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.gesture-options-panel input[type="color"] {
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #3a3428;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.gesture-options-panel input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gesture-accent);
+  cursor: pointer;
+}
+
+/* Acorde que indican las manos (izq = grado, der = voicing), abajo-centro —
+   como #chordDisplay / #qualityDisplay de Eric */
+.gesture-chord {
+  position: absolute;
+  left: 50%;
+  bottom: 5vh;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 22px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  text-align: center;
+}
+
+.gesture-chord .chord-degree {
+  color: var(--gesture-accent);
+  font-size: clamp(40px, 7vw, 76px);
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 0 14px var(--gesture-accent);
+}
+
+.gesture-chord .chord-voicing {
+  color: var(--gesture-accent);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.gesture-chord .chord-idle {
+  color: var(--gesture-accent);
+  text-shadow: none;
+  opacity: 0.4;
+}

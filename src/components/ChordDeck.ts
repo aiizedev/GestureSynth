@@ -138,7 +138,7 @@ export class ChordDeck {
     const vLabel = document.createElement("label");
     vLabel.textContent = "Voicing";
     const vSelect = document.createElement("select");
-    ([1, 2, 3, 4, 5, 6] as Voicing[]).forEach((v) => {
+    ([1, 2, 3, 4, 5, 6, 7, 8] as Voicing[]).forEach((v) => {
       const opt = document.createElement("option");
       opt.value = String(v);
       opt.textContent = `${v} — ${VOICING_LABELS[v]}`;

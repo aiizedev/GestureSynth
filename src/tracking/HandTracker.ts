@@ -1,18 +1,16 @@
 /**
- * STUB — todavía no implementado.
+ * STUB — todavía no implementado como fuente formal de `GestureState`.
  *
- * TODO (roadmap CLAUDE.md pasos 1–4): MediaPipe Hand Landmarker
- * (`@mediapipe/tasks-vision`). 21 landmarks 3D + handedness por mano.
+ * Las piezas ya existen y `/gesture` ya suena:
+ *  - `tracking/HandLandmarker.ts` → 21 landmarks + lado por mano (`HandsFrame`).
+ *  - `tracking/handChord.ts` (`readChordIntent`) → `ChordIntent` de las dos manos.
+ *  - `src/gesture.ts` cablea eso a `makeGestureApplier(synth)` en su bucle rAF.
  *
- * Cuando exista, `HandTracker` producirá exactamente el mismo `GestureState`
- * que hoy emite `PanelPerformanceSource`, con la misma interfaz:
- *
- *   subscribe(listener: (state: GestureState) => void): () => void
- *   dispose(): void
- *
- * Correcciones que van AQUÍ o en `gestureMapping.ts` (nunca duplicadas):
- *  - handedness invertida por el espejo de la cámara.
- *  - suavizado de landmarks (EMA / One Euro Filter).
- *  - histéresis del gesto de pinza (landmark 4 ↔ 8) para note on/off.
+ * `HandTracker` sería el envoltorio con la MISMA interfaz que
+ * `PanelPerformanceSource` (`subscribe(cb: (GestureState) => void)` / `dispose()`)
+ * para poder cambiar la instancia en `main.ts` y correr el instrumento entero
+ * por cámara. Le falta encapsular: ciclo de vida de cámara/modelo, `volumeDb`
+ * (altura de la mano) y el trigger de note on/off (gesto de pinza con
+ * histéresis, hoy es simplemente "hay mano izquierda con grado legible").
  */
 export {};

@@ -14,10 +14,15 @@
 real, 100 % en el navegador, que traducirá gestos de mano (MediaPipe) en síntesis
 de sonido y feedback visual.
 
-Este repo contiene la **primera fase — el módulo de audio, aislado**: sin cámara
-ni MediaPipe todavía. El instrumento se toca y se edita con un panel tipo DAW
-controlado con el mouse. La capa de tracking real (`HandTracker`) entra después
-sin tocar el motor de audio: el contrato entre ambos lados ya está congelado.
+La **fase 1** (módulo de audio, aislado) está cerrada: el instrumento se toca y
+se edita con un panel tipo DAW controlado con el mouse, y el contrato entre
+tracking y audio ya está congelado.
+
+La **fase 2** vive en **`/gesture`**: manos por cámara con MediaPipe (21
+landmarks + lado por mano); la izquierda da el grado (dedos) y la calidad
+mayor/menor (inclinación), la derecha la forma del acorde (dedos + pulgar). **Ya
+suena**: el acorde que leen las manos entra al mismo `Synth` por el puente
+`makeGestureApplier`. Ver [Fase 2 · `/gesture`](#fase-2--gesture).
 
 - **100 % armónico.** Solo se tocan acordes; la calidad del acorde es el foco.
 - **Acordes por grado.** La raíz se elige como grado dentro de una tonalidad
@@ -43,21 +48,27 @@ npm run dev        # abre http://localhost:5173
 
 ```bash
 npm run build      # tsc + build de producción
-npm test           # 58 tests (Vitest)
+npm test           # 101 tests (Vitest)
 ```
+
+Para la página `/gesture` hacen falta los assets de MediaPipe (wasm + modelo). Se
+copian solos en `postinstall`; para forzarlo: `npm run setup:mediapipe`. Van a
+`public/mediapipe/` y **no** se versionan.
 
 ---
 
 ## Arquitectura
 
 Regla **no negociable**: `tracking/` y `audio/` no se conocen entre sí. El único
-puente es `utils/gestureMapping.ts`, y **solo `audio/Synth.ts` importa `tone`**.
+puente es `utils/gestureMapping.ts`; **solo `audio/Synth.ts` importa `tone`** y
+**solo `tracking/HandLandmarker.ts` importa `@mediapipe/tasks-vision`**.
 
 ```mermaid
 flowchart LR
     subgraph tracking["tracking/ — fuente de gestos"]
         PPS["PanelPerformanceSource<br/><i>panel DAW · mouse</i>"]
-        HT["HandTracker<br/><i>MediaPipe · stub</i>"]
+        HL["HandLandmarkerSource<br/><i>MediaPipe · /gesture</i><br/><b>único que importa tasks-vision</b>"]
+        HC["handChord<br/><i>2 manos → ChordIntent</i>"]
     end
     subgraph utils["utils/ — único puente"]
         GM["gestureMapping<br/>GestureState + makeGestureApplier"]
@@ -66,15 +77,22 @@ flowchart LR
     subgraph audio["audio/ — síntesis"]
         SY["Synth<br/><i>PolySynth + cadena FX</i><br/><b>único que importa tone</b>"]
     end
-    UI["components/<br/>ChordDeck · TimbrePanel · Knob<br/>TimbreScope · TransportBar · ChordHud"]
+    UI["components/<br/>ChordDeck · TimbrePanel · GestureView · …"]
 
     UI -- "acorde / trigger / volumen" --> PPS
     UI -- "setTimbre(preset)" --> SY
     PPS -- "GestureState" --> GM
-    HT -. "GestureState (futuro)" .-> GM
+    HL -- "HandsFrame" --> HC
+    HC -- "GestureState (vía GestureView)" --> GM
     GM --> MT
     GM -- "API opaca" --> SY
 ```
+
+`HandLandmarkerSource` (`/gesture`) captura 21 landmarks + lado por mano;
+`handChord.readChordIntent` los convierte en `ChordIntent` y `src/gesture.ts` lo
+manda a `makeGestureApplier(synth)` cada frame. `HandTracker` (stub) sería el
+envoltorio con la interfaz `subscribe`/`dispose` para correr el instrumento
+entero por cámara desde `main.ts`.
 
 **Contrato congelado** (`GestureState`): lo produce hoy `PanelPerformanceSource`
 y mañana `HandTracker`, con la misma interfaz `subscribe(cb)` / `dispose()`.
@@ -82,7 +100,7 @@ y mañana `HandTracker`, con la misma interfaz `subscribe(cb)` / `dispose()`.
 `Synth` y **no cambia** cuando se conecte la cámara.
 
 ```ts
-interface ChordIntent  { key: string; keyMode: "major"|"minor"; degree: 1..7; quality: "major"|"minor"; voicing: 1..6; octave: -1..1 }
+interface ChordIntent  { key: string; keyMode: "major"|"minor"; degree: 1..7; quality: "major"|"minor"; voicing: 1..8; octave: -1..1 }
 interface GestureState { chord: ChordIntent; volumeDb: number; triggerActive: boolean }
 ```
 
@@ -109,7 +127,7 @@ propia); el motor FM no filtra.
 | **Modo** | mayor / menor natural → las 12 tonalidades mayores y las 12 menores (cambia de qué escala salen las raíces de los grados) |
 | **Nomenclatura** | sigue el círculo de quintas: las tonalidades del lado bemol (F, B♭, E♭, A♭, D♭ / Dm, Gm, Cm, Fm, B♭m, E♭m) se escriben con `b`; el resto con `#`. Los nombres de nota del HUD heredan esa grafía |
 | **Grado** | pads I–VII (fila mayor) + i–vii (fila menor); *hold-to-play*. Cada pad muestra el cifrado real que dispara (p. ej. `C`, `Dm`, `Gmaj7`), recalculado con la tónica / el modo / el voicing vigentes |
-| **Voicing** | 1–6 (ver tabla) |
+| **Voicing** | 1–8 (ver tabla) |
 | **Octava** | −1 / 0 / +1 |
 
 Cada pad lleva su propia calidad, así se combinan libremente acordes mayores y
@@ -123,6 +141,8 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 | **4** | Dominante / disminuido | 7 | °7 |
 | **5** | Quinta alterada *(sin séptima)* | aumentado ♯5 | disminuido ♭5 |
 | **6** | Séptima invertida 5-1-3-7 *(5ª al bajo, 8ª abajo)* | maj7/inv | m7/inv |
+| **7** | Dominante / dim7 invertida *(5ª del acorde al bajo)* | 7/inv | dim7/inv |
+| **8** | Aumentada / disminuida invertida *(5ª alterada al bajo)* | (♯5)/inv | (♭5)/inv |
 
 ### Timbre — `TimbrePanel`
 
@@ -182,19 +202,105 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 
 ---
 
+## Fase 2 · `/gesture`
+
+Página aparte (Vite MPA: `gesture.html` como segundo entry point; `vite.config.ts`
+reescribe la URL limpia `/gesture` → `/gesture.html` en dev y en `preview`, y en
+un hosting estático haría falta la misma regla de rewrite). El módulo de audio en
+`/` no se toca y **no** carga MediaPipe.
+
+Interfaz al estilo de la referencia de [Eric Wei](https://github.com/ericwei97-cloud/gesture-synth):
+**cámara a pantalla completa** (canvas `position:fixed; inset:0`, vídeo con recorte
+tipo `object-fit: cover`), en gris atenuado hasta activarla, overlay de *click para
+activar*. Columna izquierda (`.gesture-left`): **selector de tónica**
+(`KeySelector`; sin menú mayor/menor — la calidad la pone la inclinación de la
+mano), **selector de preset** (`PresetSelector`: 20 de fábrica por grupos + los
+que hayas guardado en `/`) y un enlace **«crear sonidos ↗»** que lleva a `/`.
+Arriba a la derecha un botón **⚙ de opciones** (`GestureOptions`): color
+principal de la página (`--gesture-accent`, aplicado a todo el texto) y
+*información avanzada* (muestra el HUD de identificación de manos, oculto por
+defecto). Las preferencias del ⚙ se guardan en `localStorage`.
+`<body data-page="gesture">` activa este layout sin afectar a `/`.
+
+Qué hace hoy — **leer el acorde de las dos manos y sonarlo**:
+
+- Cámara (`getUserMedia`) + `HandLandmarker` de `@mediapipe/tasks-vision`
+  (`runningMode:"VIDEO"`, `numHands: 2`). Captura **limitada a 1080p**
+  (`CameraFeed` con `width/height max`) — una cámara 2K/4K sube muchos menos
+  píxeles a la GPU por detección. El HUD muestra la resolución real negociada.
+- **Render del vídeo a ~60 fps** (fluido) desacoplado de la **detección**, limitada
+  a `DETECT_FPS` (`gesture.ts`, hoy 20): el bucle `requestAnimationFrame` repinta
+  el vídeo cada frame y solo llama a `detectForVideo` cuando toca. Subir
+  `DETECT_FPS` = menos latencia en los nodos, más coste.
+- 21 landmarks por mano dibujados como **nodos blancos** sobre el vídeo espejado
+  (sin líneas de esqueleto ni etiquetas, por estética; la identificación Izq/Der
+  está en el HUD). `HAND_CONNECTIONS` sigue exportado para un futuro modo esqueleto.
+- **Handedness**: MediaPipe ya la da como en un selfie; el preview de `/gesture`
+  se muestra espejado, así que `correctHandedness()` (en `tracking/handModel.ts`)
+  **respeta** la etiqueta de MediaPipe (verificado con webcam real). Suavizado EMA
+  ligero (`smoothing` 0.6) para quitar jitter sin añadir latencia.
+- Reparto izquierda/derecha; HUD con nº de manos, lado + confianza, FPS y los
+  dedos extendidos de la mano izquierda (`T·I·M·R·P`).
+- **Acorde con las dos manos** (`tracking/handPose.ts` lee cada mano,
+  `tracking/handChord.ts` las junta en un `ChordIntent` — todo puro y testeado):
+  - **Izquierda, dedos → grado** (I–VII): 1–5 dedos → I–V (da igual qué dedos,
+    solo el número); **VI** = índice + meñique; **VII** = índice + meñique +
+    pulgar — la digitación de la referencia de Eric Wei.
+  - **Izquierda, inclinación → calidad**: inclinada a la **derecha = mayor**, a
+    la **izquierda = menor** (`handTilt` / `readQuality`: la muñeca respecto al
+    tramo de los nudillos 9/13, con zona muerta natural). En la zona muerta
+    (vertical) se asume **mayor** para que el cifrado salga siempre completo.
+  - **Derecha, dedos → forma**: índice = fundamental; índice + corazón = séptima;
+    + anular = séptima dominante; los cuatro (índice→meñique) = aumentado /
+    disminuido. El **pulgar** marca 1ª inversión: no aparece en el análisis
+    romano, pero sí en el acorde exacto de abajo — notación de barra
+    (`Cmaj7/G`, `E7/B`, `Faug/C#`) + notas en el orden del voicing. Cubre las 4
+    formas (voicings 2 / 6 / 7 / 8 de `musicTheory.ts`).
+  - **Abajo-centro**: arriba el **análisis en números romanos** (`I`, `im7`,
+    `V7`, `IVmaj7`, `iidim7`, `III(♯5)`… — mayúscula/minúscula por calidad, la
+    `m7` explícita); debajo el **acorde exacto** con sus notas, en la tonalidad
+    elegida (`Cm7 · C D♯ G A♯`; con inversión, notación de barra). El HUD
+    muestra los dedos de cada mano (`T·I·M·R·P`) y la inclinación de la
+    izquierda (`▸`/`◂`).
+  - Detección de dedos como en la referencia: punta por encima de la PIP (dedos
+    largos) / punta separada de la IP (pulgar, según qué mano).
+
+**Suena**: `src/gesture.ts` pasa ese `ChordIntent` cada frame a
+`makeGestureApplier(synth)` — el **mismo puente** que usa el panel DAW por mouse.
+Trigger de note on/off = "hay mano izquierda con grado legible" (aún sin gesto de
+pinza); volumen fijo a −6 dB; el timbre lo elige el `PresetSelector` de la
+columna izquierda (arranca en *Warm Pad*). `synth.start()` va en el click de
+*activar la cámara* (gesto de usuario para el `AudioContext`).
+
+**Aislamiento**: `@mediapipe/tasks-vision` solo se importa en
+`tracking/HandLandmarker.ts`; `tone` solo en `audio/Synth.ts` (ahora el bundle de
+`/gesture` también lo incluye, pero ningún módulo de `tracking/` lo importa).
+
+**Assets**: `npm run setup:mediapipe` (también en `postinstall`) copia el wasm de
+`node_modules` y descarga `hand_landmarker.task` a `public/mediapipe/`
+(ignorado por git).
+
+---
+
 ## Estructura del proyecto
 
 ```
 src/
-├── main.ts                      Arranque: instancia Synth, cablea la fuente → makeGestureApplier
-├── style.css                    Tema oscuro, layout de 2 columnas
+├── main.ts                      Arranque app de audio (/): Synth + fuente → makeGestureApplier
+├── gesture.ts                   Arranque /gesture: cámara + modelo + Synth; acorde de las manos → makeGestureApplier
+├── style.css                    Tema oscuro; layout de audio (2 col.) + bloque /gesture
 ├── components/
 │   ├── ChordDeck.ts             Izquierda: tonalidad, voicing, octava y pads I–VII / i–vii
 │   ├── TimbrePanel.ts           Derecha: preset, 4 macros y bloque "Advanced"
 │   ├── Knob.ts                  Potenciómetro reutilizable (sin tone)
 │   ├── TimbreScope.ts           Visualizador: onda + filtro + envolvente (sin tone)
 │   ├── TransportBar.ts          Botón "Empezar", volumen master, medidor
-│   └── ChordHud.ts              Nombre del acorde activo + notas
+│   ├── ChordHud.ts              Nombre del acorde activo + notas
+│   ├── HandOverlayCanvas.ts     /gesture: vídeo a pantalla completa (cover) + nodos blancos (sin tasks-vision)
+│   ├── KeySelector.ts           /gesture: selector de tónica (12 cromáticas)
+│   ├── PresetSelector.ts        /gesture: selector de preset (fábrica + localStorage) → setTimbre
+│   ├── GestureOptions.ts        /gesture: menú ⚙ (color principal, HUD avanzado) + localStorage
+│   └── GestureView.ts           /gesture: overlay, acorde abajo-centro, columna izq, emite ChordIntent
 ├── audio/
 │   ├── Synth.ts                 PolySynth (MonoSynth/FMSynth) + cadena FX — ÚNICO que importa tone
 │   ├── Engine.ts                stub (orquestador tracking↔audio, roadmap)
@@ -205,14 +311,19 @@ src/
 │       └── *.json               20 presets de fábrica
 ├── tracking/
 │   ├── PanelPerformanceSource.ts  Temporal: eventos del panel DAW → GestureState
-│   └── HandTracker.ts             stub (MediaPipe Hand Landmarker, roadmap)
+│   ├── CameraFeed.ts             getUserMedia + <video> oculto, errores tipados (sin tasks-vision)
+│   ├── handModel.ts              PURO: HandsFrame/HandObservation, HAND_CONNECTIONS, correctHandedness, EMA
+│   ├── handPose.ts               PURO: dedos, grado, calidad (inclinación), forma/inversión de una mano
+│   ├── handChord.ts              PURO: las 2 manos → ChordIntent (readChordIntent)
+│   ├── HandLandmarker.ts         HandLandmarkerSource — ÚNICO que importa @mediapipe/tasks-vision
+│   └── HandTracker.ts            stub (envoltorio subscribe/dispose → GestureState, roadmap)
 └── utils/
     ├── gestureMapping.ts        GestureState + makeGestureApplier — ÚNICO puente
     └── musicTheory.ts           tonalidad + grado + calidad + voicing → frecuencias
 ```
 
-Tests: `*.test.ts` junto a su módulo (`musicTheory`, `presets`, `TimbrePanel` con
-happy-dom).
+Tests: `*.test.ts` junto a su módulo — `musicTheory`, `presets`, `handModel`,
+`handPose`, `handChord`, y `ChordDeck` / `TimbrePanel` con happy-dom.
 
 ---
 
@@ -222,8 +333,8 @@ happy-dom).
 |---|---|---|
 | Build | **Vite 5 + TypeScript** vanilla | el loop de audio/canvas corre fuera de cualquier ciclo de render declarativo; sin framework |
 | Audio | **Tone.js 15** (`PolySynth`) | timbre editable en caliente y presets serializables vía `set()` / `get()` |
-| Tests | **Vitest 2** (+ happy-dom) | teoría musical, esquema de presets y UI del panel de timbre |
-| Visión *(futuro)* | MediaPipe Hand Landmarker | 21 landmarks 3D + handedness por mano |
+| Tests | **Vitest 2** (+ happy-dom) | teoría musical, esquema de presets, modelo de manos y UI |
+| Visión | **`@mediapipe/tasks-vision` 1** · `HandLandmarker` | 21 landmarks + lado por mano; aislado en `tracking/HandLandmarker.ts` |
 
 ---
 
@@ -236,6 +347,7 @@ happy-dom).
 | `npm run preview` | sirve el build de producción |
 | `npm test` | ejecuta los tests una vez |
 | `npm run test:watch` | tests en modo watch |
+| `npm run setup:mediapipe` | copia el wasm + descarga el modelo a `public/mediapipe/` (también en `postinstall`) |
 
 ---
 
@@ -244,22 +356,35 @@ happy-dom).
 **Hecho**
 
 - [x] Motor de audio aislado: `Synth` opaco, cadena FX, medidor
-- [x] Acordes por grado × calidad × voicing (1–6) × octava
+- [x] Acordes por grado × calidad × voicing (1–8, con inversiones) × octava
 - [x] Panel de timbre: presets, macros, sección avanzada, potenciómetros
 - [x] Visualizador de onda / filtro / envolvente
 - [x] Motor conmutable sustractivo ↔ FM por preset
 - [x] 20 presets de fábrica (básico + «Joji / ballad» + «Inspiration»)
 - [x] Guardar / borrar presets propios (localStorage, esquema v2 serializable)
 - [x] Contrato `GestureState` congelado + `PanelPerformanceSource` temporal
+- [x] `/gesture`: cámara a pantalla completa + `HandLandmarker`, identificación de
+      manos (21 nodos, lado izq/der, 1080p, render 60 fps / detección 20 fps)
+- [x] `/gesture`: mano izquierda → grado + calidad mayor/menor (dedos +
+      inclinación: derecha = mayor, izquierda = menor); mano derecha → forma
+      (dedos: fundamental / séptima / dominante / aum·dim). Abajo-centro: análisis
+      en números romanos + acorde exacto con notas
+- [x] `/gesture`: columna izq con selector de tónica + selector de preset +
+      enlace «crear sonidos» a `/`; menú ⚙ (color principal, HUD avanzado) con
+      preferencias en `localStorage`; inversiones con notación de barra
+- [x] `Voicing` 7 / 8 en `musicTheory.ts`: 1ª inversión de dominante·dim7 y de
+      aum·dim (aplica a `ChordDeck` y a `/gesture`)
+- [x] **`/gesture` suena**: `handChord.readChordIntent` → `makeGestureApplier` →
+      `Synth`; trigger = mano izquierda con grado legible
 
 **Siguiente**
 
+- [ ] `/gesture`: volumen por altura de la mano; octava; pinza con histéresis
+      para note on/off (en vez de "hay mano izquierda")
 - [ ] FX para lo-fi: `BitCrusher` / `Chebyshev`, oscilador de ruido, `EQ3`
-- [ ] `tracking/HandTracker.ts`: MediaPipe Hand Landmarker → `GestureState`
-      (mano izquierda = timbre, derecha = performance; pinza con histéresis;
-      suavizado de landmarks)
+- [ ] `tracking/HandTracker.ts`: envoltorio `subscribe`/`dispose` → `GestureState`
+      para correr el instrumento entero por cámara desde `main.ts`
 - [ ] `audio/Engine.ts`: orquestador del loop tracking ↔ audio a 30–60 fps
-- [ ] Feed de cámara + esqueleto de mano en canvas
 - [ ] Pulido visual / UX; v2 opcional con Three.js
 
 ---
@@ -275,4 +400,7 @@ happy-dom).
   es asíncrono y costoso); los macros nunca lo tocan.
 - **La UI del timbre está en inglés** por convención de los sintetizadores
   virtuales; el resto de la interfaz, en español.
+- **Aislamiento verificable con `grep`:** `from "tone"` → solo `audio/Synth.ts`;
+  `from "@mediapipe/tasks-vision"` → solo `tracking/HandLandmarker.ts`. Ningún
+  módulo de `tracking/` importa `tone` aunque el bundle de `/gesture` lo incluya.
 

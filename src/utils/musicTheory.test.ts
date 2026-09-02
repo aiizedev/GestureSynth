@@ -42,6 +42,16 @@ describe("chordIntervals", () => {
     expect(chordIntervals("major", 6)).toEqual([-5, 0, 4, 11]);
     expect(chordIntervals("minor", 6)).toEqual([-5, 0, 3, 10]);
   });
+
+  it("voicing 7 es la dominante / dim7 invertida (5ª del acorde al bajo)", () => {
+    expect(chordIntervals("major", 7)).toEqual([-5, 0, 4, 10]);
+    expect(chordIntervals("minor", 7)).toEqual([-6, 0, 3, 9]);
+  });
+
+  it("voicing 8 es la tríada aumentada / disminuida invertida (5ª alterada al bajo)", () => {
+    expect(chordIntervals("major", 8)).toEqual([-4, 0, 4]);
+    expect(chordIntervals("minor", 8)).toEqual([-6, 0, 3]);
+  });
 });
 
 describe("chordNoteNames", () => {
@@ -153,6 +163,17 @@ describe("describeChord", () => {
     expect(
       describeChord({ ...base, degree: 2, quality: "minor", voicing: 6 }).symbol,
     ).toBe("Dm7/inv");
+  });
+
+  it("voicing 7 / 8 invierten dominante y aum·dim (7/inv, dim7/inv, (#5)/inv, (♭5)/inv)", () => {
+    expect(describeChord({ ...base, degree: 5, voicing: 7 }).symbol).toBe("G7/inv");
+    expect(
+      describeChord({ ...base, degree: 2, quality: "minor", voicing: 7 }).symbol,
+    ).toBe("Ddim7/inv");
+    expect(describeChord({ ...base, degree: 3, voicing: 8 }).symbol).toBe("E(#5)/inv");
+    expect(
+      describeChord({ ...base, degree: 2, quality: "minor", voicing: 8 }).symbol,
+    ).toBe("Dm(♭5)/inv");
   });
 });
 

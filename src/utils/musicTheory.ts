@@ -68,7 +68,7 @@ export const KEY_MODE_LABELS: Record<KeyMode, string> = {
   minor: "menor",
 };
 export const DEGREE_LABELS = ["I", "II", "III", "IV", "V", "VI", "VII"] as const;
-export type Voicing = 1 | 2 | 3 | 4 | 5 | 6;
+export type Voicing = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export const VOICING_LABELS: Record<Voicing, string> = {
   1: "tríada fundamental (1-3-5)",
   2: "inversión 5-1-3 (5ª al bajo)",
@@ -76,6 +76,8 @@ export const VOICING_LABELS: Record<Voicing, string> = {
   4: "dominante / dim7",
   5: "aumentada / disminuida (#5 / ♭5)",
   6: "séptima invertida 5-1-3-7 (5ª al bajo)",
+  7: "dominante / dim7 invertida (5ª al bajo)",
+  8: "aumentada / disminuida invertida (5ª al bajo)",
 };
 
 function keyOffset(key: string): number {
@@ -115,6 +117,14 @@ export function chordIntervals(
       // Séptima invertida 5-1-3-7 con la 5ª al bajo (una 8ª abajo): un poco más
       // grave que la séptima en estado fundamental. maj7 en mayor, m7 en menor.
       return quality === "major" ? [-5, 0, 4, 11] : [-5, 0, 3, 10];
+    case 7:
+      // Dominante / dim7 invertida: la 5ª del acorde al bajo (una 8ª abajo),
+      // luego 1-3-♭7. En menor la 5ª es la disminuida (♭5 = 6 st) → −6.
+      return quality === "major" ? [-5, 0, 4, 10] : [-6, 0, 3, 9];
+    case 8:
+      // Aumentada / disminuida invertida: la 5ª alterada al bajo (una 8ª abajo),
+      // luego 1-3. #5 (8 st) → −4 en mayor; ♭5 (6 st) → −6 en menor.
+      return quality === "major" ? [-4, 0, 4] : [-6, 0, 3];
   }
 }
 
@@ -132,6 +142,10 @@ function chordExt(quality: "major" | "minor", voicing: Voicing): string {
       return maj ? "(#5)" : "(♭5)";
     case 6:
       return maj ? "maj7/inv" : "7/inv";
+    case 7:
+      return maj ? "7/inv" : "dim7/inv";
+    case 8:
+      return maj ? "(#5)/inv" : "(♭5)/inv";
     default:
       return "";
   }
@@ -185,8 +199,10 @@ export function describeChord(intent: ChordIntent): {
     spellingFor(intent.key, intent.keyMode)[
       (((rootMidi(intent) % 12) + 12) % 12)
     ];
-  const qual = intent.quality === "major" ? "" : "m";
   const ext = chordExt(intent.quality, intent.voicing);
+  // La "m" sobra si la extensión ya dice "dim" (dim7 / dim7/inv): "Ddim7", no
+  // "Dmdim7".
+  const qual = intent.quality === "major" || ext.includes("dim") ? "" : "m";
   // Grado en números romanos: mayúsculas para acordes mayores, minúsculas para
   // menores. Así se leen de un vistazo dominantes secundarias / préstamos.
   const degLabel = DEGREE_LABELS[Math.min(6, Math.max(0, intent.degree - 1))];

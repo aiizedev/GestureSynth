@@ -19,7 +19,7 @@ export interface ChordIntent {
   /** Grado de la escala de la tonalidad, 1..7 (I..VII) — es la raíz del acorde. */
   degree: number;
   quality: "major" | "minor";
-  /** Voicing / extensión, 1..6 (ver `VOICING_LABELS`). */
+  /** Voicing / extensión, 1..8 (ver `VOICING_LABELS`). */
   voicing: Voicing;
   /** Desplazamiento de octava, típicamente -1..+1. */
   octave: number;

@@ -8,6 +8,10 @@ dist
 dist-ssr
 *.local
 
+# Assets de MediaPipe: se obtienen con `npm run setup:mediapipe` (postinstall).
+# ~42 MB de wasm + ~7 MB de modelo, no van al repo.
+public/mediapipe/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
