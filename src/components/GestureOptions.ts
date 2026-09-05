@@ -1,17 +1,32 @@
 /**
  * Menú de opciones de `/gesture` — sin `@mediapipe/tasks-vision`, sin `tone`.
  * Botón ⚙ arriba a la derecha que despliega un panel con:
- *  - color principal de la página (se aplica a `--gesture-accent`)
+ *  - color principal de la página: paleta pastel (`--gesture-accent`)
  *  - "información avanzada" → muestra / oculta el HUD de identificación de manos
  * Ambas preferencias se guardan en `localStorage`.
  */
-const ACCENT_KEY = "gesturesynth.gesture.accent";
+import type { TimbrePreset } from "../audio/presets/types";
+import {
+  ACCENT_KEY,
+  ACCENT_SWATCHES,
+  onAccentChange,
+  readAccent,
+} from "../theme/accent";
+import { SoundShare } from "./SoundShare";
+
 const ADVANCED_KEY = "gesturesynth.gesture.advanced";
-const DEFAULT_ACCENT = "#e8a13d";
+
+/** Paleta pastel para el color principal de la página. Re-exportada desde el
+ *  módulo compartido para no romper importadores/tests existentes. */
+export { ACCENT_SWATCHES } from "../theme/accent";
 
 export interface GestureOptionsCallbacks {
   onAccent: (hex: string) => void;
   onAdvanced: (show: boolean) => void;
+  /** Sonido actual a exportar. Si falta (junto con `onImport`), no se muestra "Compartir". */
+  getSound?: () => TimbrePreset;
+  /** Aplicar y guardar un sonido importado con el nombre que puso el usuario. */
+  onImport?: (preset: TimbrePreset, name: string) => void;
 }
 
 function readLS(key: string): string | null {
@@ -40,8 +55,7 @@ export class GestureOptions {
   private closeOnOutside?: (ev: MouseEvent) => void;
 
   constructor(cb: GestureOptionsCallbacks) {
-    const stored = readLS(ACCENT_KEY);
-    this.accent = stored && /^#[0-9a-fA-F]{6}$/.test(stored) ? stored : DEFAULT_ACCENT;
+    this.accent = readAccent();
     this.advanced = readLS(ADVANCED_KEY) === "1";
 
     this.element = document.createElement("div");
@@ -57,16 +71,38 @@ export class GestureOptions {
     this.panel.className = "gesture-options-panel";
     this.panel.hidden = true;
 
-    const colorRow = document.createElement("label");
-    colorRow.className = "options-row";
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    colorInput.value = this.accent;
-    colorInput.addEventListener("input", () => {
-      writeLS(ACCENT_KEY, colorInput.value);
-      cb.onAccent(colorInput.value);
+    const colorRow = document.createElement("div");
+    colorRow.className = "options-row options-row-stack";
+    colorRow.append(document.createTextNode("Color principal"));
+    const grid = document.createElement("div");
+    grid.className = "swatch-grid";
+    grid.setAttribute("role", "group");
+    grid.setAttribute("aria-label", "Color principal");
+    const swatches = ACCENT_SWATCHES.map(({ hex, name }) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.style.background = hex;
+      b.dataset.hex = hex;
+      b.setAttribute("aria-label", name);
+      b.setAttribute("aria-pressed", String(hex === this.accent));
+      b.addEventListener("click", () => {
+        for (const s of swatches) s.setAttribute("aria-pressed", String(s === b));
+        writeLS(ACCENT_KEY, hex);
+        cb.onAccent(hex);
+      });
+      return b;
     });
-    colorRow.append(document.createTextNode("Color principal"), colorInput);
+    grid.append(...swatches);
+    colorRow.append(grid);
+
+    // Otra pestaña (p. ej. `/` abierta a la vez) cambió el color → seguirla.
+    onAccentChange((hex) => {
+      for (const s of swatches) {
+        s.setAttribute("aria-pressed", String(s.dataset.hex === hex));
+      }
+      cb.onAccent(hex);
+    });
 
     const advRow = document.createElement("label");
     advRow.className = "options-row";
@@ -80,6 +116,13 @@ export class GestureOptions {
     advRow.append(document.createTextNode("Información avanzada"), advChk);
 
     this.panel.append(colorRow, advRow);
+
+    if (cb.getSound && cb.onImport) {
+      const share = new SoundShare({ getSound: cb.getSound, onImport: cb.onImport });
+      const sep = document.createElement("div");
+      sep.className = "options-sep";
+      this.panel.append(sep, share.element);
+    }
 
     btn.addEventListener("click", (e) => {
       e.stopPropagation();

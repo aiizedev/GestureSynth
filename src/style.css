@@ -1,16 +1,23 @@
 :root {
   color-scheme: dark;
-  --bg: #14161c;
-  --panel: #1d2029;
-  --panel-2: #23273300;
-  --edge: #333949;
-  --text: #e7e9ef;
-  --muted: #99a0b3;
-  --accent: #6ea8fe;
-  --accent-2: #7ee0c0;
-  --pad: #2a2f3d;
-  --pad-active: #6ea8fe;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* editorial oscuro — la rejilla de hairlines hace el trabajo, no las cajas */
+  --bg: #0e0f12;
+  --panel: #0e0f12;
+  --panel-2: #131418;
+  --edge: #2a2b30;
+  --rule: #35363c;
+  --hair: #202126;
+  --text: #e8e6df;
+  --muted: #8a8b91;
+  /* acento: lo sobrescribe `ThemePicker` desde localStorage (paleta de /gesture) */
+  --accent: #f3c69b;
+  --accent-2: var(--accent);
+  --accent-ink: #17130d;
+  --pad: #131418;
+  --pad-active: var(--accent);
+  --fd: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fm: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: var(--fd);
 }
 
 * {
@@ -21,99 +28,349 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 20px 48px;
+  max-width: 1120px;
+  margin: 36px auto 56px;
+  border: 1.5px solid var(--rule);
 }
 
-h1 {
-  font-size: 20px;
-  font-weight: 650;
-  margin: 0 0 4px;
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
-.subtitle {
-  color: var(--muted);
+#app > * {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+#app > *:nth-child(2) {
+  animation-delay: 0.07s;
+}
+#app > *:nth-child(3) {
+  animation-delay: 0.14s;
+}
+#app > *:nth-child(4) {
+  animation-delay: 0.21s;
+}
+#app > *:nth-child(5) {
+  animation-delay: 0.28s;
+}
+
+/* La última fila (HUD) no lleva regla inferior propia — la cierra el borde de #app */
+#app > *:last-child {
+  border-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app > * {
+    animation: none;
+  }
+}
+
+/* --- Cabecera -------------------------------------------------------- */
+.site-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 26px 26px 22px;
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.site-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1.5px;
+  height: 1.5px;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.14s linear;
+}
+
+.audio-on .site-head::after {
+  width: calc(4% + var(--level, 0) * 96%);
+}
+
+.site-title {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: 2px 2px 0 #292a2f;
+}
+
+.head-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.lets-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   font-size: 13px;
-  margin: 0 0 20px;
+  padding: 10px 18px;
+  text-decoration: none;
+}
+
+.lets-play:hover {
+  filter: brightness(1.06);
+}
+
+.brand-tag {
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.theme-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-label {
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.theme-picker .swatch-grid {
+  display: flex;
+  gap: 7px;
+}
+
+.theme-picker .swatch {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  outline-offset: 2px;
+}
+
+.theme-picker .swatch:focus-visible,
+.theme-picker .swatch[aria-pressed="true"] {
+  outline: 2px solid var(--text);
 }
 
 /* --- Transport --------------------------------------------------------- */
 .transport {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1.4fr 1fr;
   align-items: center;
-  gap: 20px;
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
+  gap: 0;
+  border-bottom: 1.5px solid var(--rule);
 }
 
-.start-btn {
+.transport > .tp-cell {
+  padding: 16px 24px;
+  border-right: 1.5px solid var(--rule);
+  min-width: 0;
+}
+
+.transport > .tp-cell:last-child {
+  border-right: none;
+}
+
+.tp-lbl {
+  display: block;
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Motor */
+.tp-motor .start-btn {
   appearance: none;
-  border: 0;
-  border-radius: 9px;
-  padding: 10px 20px;
+  margin-top: 10px;
+  border: 1.5px solid var(--rule);
+  border-radius: 0;
+  padding: 10px 18px;
+  font-family: var(--fd);
   font-size: 14px;
-  font-weight: 650;
-  color: #0b1220;
-  background: var(--accent-2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: transparent;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.3s;
 }
 
-.start-btn:disabled {
-  opacity: 0.5;
+.audio-on .tp-motor .start-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 34px -10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.audio-on .tp-motor .start-btn::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 9px;
+  vertical-align: 1px;
+  background: var(--accent-ink);
+}
+
+.tp-motor .start-btn:disabled {
+  opacity: 0.55;
   cursor: default;
 }
 
-.transport .field {
-  flex: 1;
-  max-width: 260px;
+/* Volumen */
+.tp-vol .vol-read {
+  margin: 4px 0 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
-.meter-wrap {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
+.vol-num {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vol-unit {
+  font-family: var(--fm);
   font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--pad);
+  border: 1.5px solid var(--rule);
+  cursor: pointer;
+}
+
+.vol-slider::-webkit-slider-runnable-track {
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--fill, 85%),
+    transparent var(--fill, 85%)
+  );
+}
+
+.vol-slider::-moz-range-track {
+  height: 100%;
+}
+
+.vol-slider::-moz-range-progress {
+  height: 100%;
+  background: var(--accent);
+}
+
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 14px;
+  margin-top: -4px;
+  background: var(--text);
+  border: 0;
+}
+
+.vol-slider::-moz-range-thumb {
+  width: 3px;
+  height: 14px;
+  border: 0;
+  border-radius: 0;
+  background: var(--text);
+}
+
+/* Nivel */
+.meter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.meter-wrap canvas {
+  display: block;
+  width: 200px;
+  max-width: 100%;
+  height: auto;
 }
 
 /* --- Layout ---------------------------------------------------------- */
 .columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 0;
+  border-bottom: 1.5px solid var(--rule);
 }
 
 @media (max-width: 820px) {
   .columns {
     grid-template-columns: 1fr;
   }
+
+  .columns .panel:first-child {
+    border-right: none;
+    border-bottom: 1.5px solid var(--rule);
+  }
 }
 
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  padding: 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 20px 24px 22px;
+}
+
+.columns .panel:first-child {
+  border-right: 1.5px solid var(--rule);
 }
 
 .panel[aria-disabled="true"] {
-  opacity: 0.45;
+  opacity: 0.4;
   pointer-events: none;
 }
 
 .panel h2 {
-  font-size: 13px;
+  font-family: var(--fm);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  letter-spacing: 0.2em;
+  color: var(--text);
   margin: 0 0 14px;
 }
 
@@ -125,13 +382,19 @@ h1 {
 }
 
 .field label {
-  font-size: 12px;
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 .field .val {
   color: var(--text);
+  font-family: var(--fm);
   font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 select,
@@ -139,54 +402,145 @@ input[type="range"] {
   width: 100%;
 }
 
-select {
-  background: var(--pad);
-  color: var(--text);
-  border: 1px solid var(--edge);
-  border-radius: 7px;
-  padding: 7px 8px;
-  font-size: 13px;
-}
-
-/* --- Timbre: guardar presets ------------------------------------- */
-.preset-save {
-  display: flex;
-  gap: 6px;
-  margin: -4px 0 14px;
-}
-
-.preset-save input {
-  flex: 1;
-  min-width: 0;
-  background: var(--pad);
-  color: var(--text);
-  border: 1px solid var(--edge);
-  border-radius: 7px;
-  padding: 7px 8px;
-  font-size: 13px;
-}
-
-.preset-save input[aria-invalid="true"] {
-  border-color: #e0645f;
-}
-
-.preset-save button {
+/* Los selects de parámetros de `/` se ven como una celda de valor. */
+.panel .field select {
+  -webkit-appearance: none;
   appearance: none;
-  background: var(--pad);
-  border: 1px solid var(--edge);
+  color-scheme: dark;
+  background: transparent;
   color: var(--text);
-  border-radius: 7px;
-  padding: 7px 12px;
-  font-size: 13px;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 0 0;
+  font-family: var(--fd);
+  font-size: 15px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+/* El menú desplegable, en oscuro (Chromium respeta bg de option/optgroup). */
+.panel .field select option,
+.panel .field select optgroup {
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--fd);
+}
+
+.panel .field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* El selector de PRESET sí se ve como un control: caja + flecha. */
+.panel .preset-field {
+  position: relative;
+}
+
+.panel .preset-field select {
+  background: var(--panel-2);
+  border: 1.5px solid var(--rule);
+  padding: 10px 34px 10px 12px;
+  font-size: 14px;
+}
+
+.panel .preset-field select:hover {
+  border-color: var(--accent);
+}
+
+.panel .preset-field::after {
+  content: "▾";
+  position: absolute;
+  right: 13px;
+  bottom: 15px;
+  font-size: 11px;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+/* Rejilla 2×2 de parámetros (Tonalidad/Modo · Voicing/Octava) */
+.panel > .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1.5px solid var(--rule);
+}
+
+.panel > .row + .row {
+  border-top: 0;
+}
+
+.panel > .row:last-of-type {
+  margin-bottom: 16px;
+}
+
+.panel > .row .field {
+  margin: 0;
+  padding: 9px 12px;
+  gap: 3px;
+  border-right: 1.5px solid var(--rule);
+}
+
+.panel > .row .field:nth-child(2) {
+  border-right: 0;
+}
+
+.panel > .row:first-of-type .field {
+  border-bottom: 1.5px solid var(--rule);
+}
+
+/* --- Timbre: guardar presets + compartir (una rejilla con hairlines) --- */
+.preset-save {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 16px;
+  border: 1.5px solid var(--rule);
+}
+
+.preset-save > input {
+  flex: 1;
+  min-width: 128px;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-right: 1.5px solid var(--rule);
+  border-radius: 0;
+  padding: 9px 12px;
+  font-family: var(--fm);
+  font-size: 12px;
+}
+
+.preset-save > input::placeholder {
+  color: var(--muted);
+}
+
+.preset-save > input[aria-invalid="true"] {
+  color: #e0645f;
+  box-shadow: inset 0 0 0 1.5px #e0645f;
+}
+
+.preset-save > button,
+.preset-save .sound-share-btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-right: 1.5px solid var(--rule);
+  color: var(--text);
+  border-radius: 0;
+  padding: 9px 14px;
+  font-family: var(--fm);
+  font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.preset-save button:hover:not(:disabled) {
-  border-color: var(--accent);
+.preset-save > button:hover:not(:disabled),
+.preset-save .sound-share-btn:hover:not(:disabled) {
+  color: var(--accent);
 }
 
-.preset-save button:disabled {
+.preset-save > button:disabled,
+.preset-save .sound-share-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -194,8 +548,194 @@ select {
 .preset-save .save-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b1220;
-  font-weight: 650;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* En `/`, `.sound-share` y su fila de acciones no pintan caja: sus botones
+   entran directos en la rejilla de `.preset-save`. */
+.preset-save .sound-share,
+.preset-save .sound-share-actions {
+  display: contents;
+}
+
+/* Exportar | Importar cierran la primera fila (sin doble línea al final). */
+.preset-save .sound-share-actions > .sound-share-btn:nth-child(2) {
+  border-right: 0;
+}
+
+/* "Pedir a una IA" (3ª acción) → línea propia, a todo el ancho. */
+.preset-save .sound-share-actions > .sound-share-btn:nth-child(3) {
+  flex-basis: 100%;
+  text-align: left;
+  border-right: 0;
+  border-top: 1.5px solid var(--rule);
+}
+
+.preset-save .sound-share-status {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 7px 12px;
+  border-top: 1.5px solid var(--rule);
+  max-width: none;
+}
+
+.preset-save .sound-share-status:empty {
+  display: none;
+}
+
+/* --- Compartir sonido: base (también usada en el menú ⚙ de /gesture) --- */
+.sound-share {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sound-share-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sound-share-btn {
+  appearance: none;
+  background: var(--pad);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sound-share-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.sound-share-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Popup de "Importar": el ÚNICO sitio donde se ve el JSON. */
+.sound-share-popup {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: 300px;
+  max-width: 80vw;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.sound-share-popup[hidden] {
+  display: none;
+}
+
+.sound-share-popup input[type="text"],
+.sound-share-popup textarea {
+  width: 100%;
+  background: var(--pad);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.sound-share-popup input[type="text"] {
+  font-size: 13px;
+}
+
+.sound-share-popup textarea {
+  min-height: 84px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.sound-share-popup input[aria-invalid="true"] {
+  border-color: #e0645f;
+}
+
+.sound-share-popup .btn-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sound-share-popup button {
+  appearance: none;
+  background: var(--pad);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sound-share-popup button:hover {
+  border-color: var(--accent);
+}
+
+.sound-share-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sound-share-status {
+  margin: 0;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.sound-share-status:empty {
+  display: none;
+}
+
+.sound-share-status[data-error="true"] {
+  color: #e0645f;
+}
+
+.options-sep {
+  border-top: 1px solid var(--edge);
+  margin: 4px 0;
+}
+
+/* Dentro del menú ⚙ de /gesture: hereda el acento pastel de la página. */
+.gesture-options-panel .sound-share-btn,
+.gesture-options-panel .sound-share-popup button {
+  background: rgba(20, 20, 20, 0.85);
+  color: var(--gesture-accent);
+  border-color: var(--gesture-accent);
+}
+
+.gesture-options-panel .sound-share-popup {
+  background: #1a1a1a;
+  border-color: var(--gesture-accent);
+}
+
+.gesture-options-panel .sound-share-popup input[type="text"],
+.gesture-options-panel .sound-share-popup textarea {
+  background: #141414;
+  color: var(--gesture-accent);
+  border-color: var(--gesture-accent);
+}
+
+.gesture-options-panel .options-sep {
+  border-top-color: var(--gesture-accent);
 }
 
 .row {
@@ -215,20 +755,21 @@ select {
 .seg button {
   flex: 1;
   appearance: none;
-  background: var(--pad);
-  border: 1px solid var(--edge);
+  background: transparent;
+  border: 1.5px solid var(--rule);
   color: var(--muted);
-  border-radius: 7px;
+  border-radius: 0;
   padding: 7px 0;
-  font-size: 13px;
+  font-family: var(--fm);
+  font-size: 12px;
   cursor: pointer;
 }
 
 .seg button[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b1220;
-  font-weight: 650;
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 /* --- Chord pads ----------------------------------------------------- */
@@ -246,171 +787,191 @@ select {
 }
 
 .pad-row-label {
-  font-size: 11px;
+  font-family: var(--fm);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.14em;
   color: var(--muted);
 }
 
 .pads {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  border: 1.5px solid var(--rule);
 }
 
 .pad {
   appearance: none;
-  border: 1px solid var(--edge);
-  background: var(--pad);
+  border: 0;
+  border-right: 1.5px solid var(--rule);
+  background: transparent;
   color: var(--text);
-  border-radius: 9px;
-  padding: 12px 0;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 0;
+  padding: 16px 0 13px;
+  font-family: var(--fd);
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
   touch-action: none;
-  transition: transform 0.04s ease, background 0.08s ease;
+  transition: background 0.08s ease, color 0.08s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  line-height: 1.1;
+  gap: 5px;
+  line-height: 1.05;
+}
+
+.pad:last-child {
+  border-right: 0;
 }
 
 .pad-roman {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .pad-chord {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   font-style: normal;
+  font-family: var(--fm);
+  letter-spacing: 0.04em;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
 .pad[data-quality="minor"] {
-  background: #23283a;
   font-style: italic;
   font-weight: 500;
 }
 
+.pad[data-quality="minor"] .pad-roman {
+  font-style: italic;
+}
+
 .pad:active,
 .pad[data-held="true"] {
-  background: var(--pad-active);
-  color: #0b1220;
-  transform: translateY(1px);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .pad:active .pad-chord,
 .pad[data-held="true"] .pad-chord {
-  color: #0b1220;
+  color: color-mix(in srgb, var(--accent-ink) 70%, transparent);
 }
 
 /* --- Timbre: visualizador ---------------------------------------- */
 .scope {
-  margin: 4px 0 14px;
+  margin: 4px 0 16px;
+  border: 1.5px solid var(--rule);
 }
 
 .scope canvas {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 8px;
-  background: #0f1117;
-  border: 1px solid var(--edge);
+  border-radius: 0;
+  background: var(--panel-2);
+  border: 0;
 }
 
 /* --- Timbre: potenciómetros ------------------------------------- */
 .macros {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--rule);
 }
 
 .knob {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 2px;
-  border-radius: 10px;
+  gap: 3px;
+  padding: 12px 2px 10px;
+  border-radius: 0;
+  border-right: 1px solid var(--hair);
   cursor: ns-resize;
   outline: none;
   touch-action: none;
   user-select: none;
 }
 
-.knob:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent);
+.knob:last-child {
+  border-right: 0;
 }
 
+.knob:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Disco lleno + aguja de acento; sin arco (como el diseño / las perillas reales). */
 .knob svg {
   display: block;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 38%, #3a4152 0%, #262b36 62%, #1b1f28 100%);
+  background: radial-gradient(circle at 50% 36%, #1c1d22, #101116 72%);
   box-shadow:
-    inset 0 2px 4px rgba(255, 255, 255, 0.06),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5);
 }
 
 .knob-track {
   fill: none;
-  stroke: var(--edge);
-  stroke-width: 3;
+  stroke: var(--rule);
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 
 .knob-arc {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-.knob--macro .knob-arc {
-  stroke: var(--accent-2);
+  display: none;
 }
 
 .knob-pointer {
-  stroke: var(--text);
-  stroke-width: 2;
+  stroke: var(--accent);
+  stroke-width: 2.5;
   stroke-linecap: round;
 }
 
 .knob-label {
-  font-size: 11px;
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.03em;
   color: var(--muted);
   text-align: center;
 }
 
 .knob-val {
-  font-size: 11px;
-  color: var(--text);
+  font-family: var(--fm);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text) 55%, transparent);
   font-variant-numeric: tabular-nums;
 }
 
 .knob--macro .knob-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text);
 }
 
-/* --- Timbre: bloque "Avanzado" -------------------------------- */
+.knob--macro .knob-val {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* --- Timbre: Advanced — fila a todo el ancho (la coloca main.ts) ----- */
 .advanced {
-  border-top: 1px solid var(--edge);
-  padding-top: 8px;
+  border-top: 1.5px solid var(--rule);
+  padding-top: 10px;
 }
 
 .advanced > summary {
   cursor: pointer;
-  font-size: 12px;
+  font-family: var(--fm);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  letter-spacing: 0.16em;
+  color: var(--text);
   list-style: none;
   padding: 4px 0;
 }
@@ -421,22 +982,57 @@ select {
 
 .advanced > summary::before {
   content: "▸ ";
+  color: var(--accent);
 }
 
 .advanced[open] > summary::before {
   content: "▾ ";
+  color: var(--accent);
+}
+
+/* Cuando main.ts la saca de la columna: rejilla de 4 grupos a todo el ancho. */
+.advanced.advanced-row {
+  border-top: 0;
+  border-bottom: 1.5px solid var(--rule);
+  padding-top: 0;
+}
+
+.advanced.advanced-row[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.advanced.advanced-row > summary {
+  padding: 12px 26px;
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.advanced.advanced-row .adv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.advanced.advanced-row .timbre-section {
+  margin: 0;
+  padding: 14px 16px 16px;
+  border-right: 1.5px solid var(--rule);
+}
+
+.advanced.advanced-row .timbre-section:last-child {
+  border-right: 0;
 }
 
 .timbre-section {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .timbre-section h3 {
-  font-size: 11px;
+  font-family: var(--fm);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  margin: 0 0 6px;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  margin: 0 0 10px;
 }
 
 .timbre-section[aria-disabled="true"] {
@@ -444,61 +1040,82 @@ select {
   pointer-events: none;
 }
 
+.timbre-section .field {
+  margin-bottom: 10px;
+}
+
 .knob-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-  gap: 6px;
-  margin-bottom: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .knob-row[hidden] {
   display: none;
 }
 
-/* --- HUD ---------------------------------------------------------- */
-.hud {
-  margin-top: 16px;
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.advanced.advanced-row .knob {
+  border-right: 0;
 }
 
+/* --- HUD --------------------------------------------------------- */
+.hud {
+  margin-top: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 18px 26px;
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+}
+
+/* El HUD del diseño es sólo texto — el punteo de notas del canvas sobra. */
 .hud canvas {
-  display: block;
-  border-radius: 8px;
-  background: #0f1117;
-  border: 1px solid var(--edge);
+  display: none;
 }
 
 .hud-text {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 20px;
+  flex: 1;
 }
 
 .hud-chord {
-  font-size: 22px;
+  font-size: 34px;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: 3px 3px 0 #26272c;
 }
 
 .hud-notes {
   color: var(--muted);
+  font-family: var(--fm);
   font-size: 13px;
+  letter-spacing: 0.18em;
   font-variant-numeric: tabular-nums;
 }
 
 .hud-trigger {
-  font-size: 12px;
+  font-family: var(--fm);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.hud-trigger::before {
+  content: "estado · ";
   color: var(--muted);
 }
 
 .hud-trigger[data-on="true"] {
-  color: var(--accent-2);
-  font-weight: 650;
+  color: var(--accent);
+  font-weight: 500;
 }
 
 /* --- /gesture · cámara a pantalla completa (estilo ref. Eric Wei) ---- */
@@ -510,8 +1127,10 @@ body[data-page="gesture"] {
   position: fixed;
   inset: 0;
   background: #111;
-  /* Color principal de la página; lo cambia el menú de opciones. */
-  --gesture-accent: #e8a13d;
+  /* Color principal de la página; lo cambia el menú de opciones (paleta pastel). */
+  --gesture-accent: #f3c69b;
+  /* Nivel de salida 0..1 del Synth, lo escribe GestureView cada frame. */
+  --gesture-level: 0;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 }
@@ -519,6 +1138,24 @@ body[data-page="gesture"] {
 .hand-overlay {
   position: absolute;
   inset: 0;
+}
+
+/* Aura audio-reactiva: resplandor pastel desde los bordes que crece con el
+   volumen. Encima de la cámara, debajo del HUD / acorde. `--gesture-level` lo
+   mueve JS cada frame, así que NO lleva transition. */
+.gesture-aura {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 120% 120% at 50% 50%,
+    transparent 35%,
+    color-mix(in srgb, var(--gesture-accent) 70%, transparent) 100%
+  );
+  opacity: calc(0.08 + 0.55 * var(--gesture-level, 0));
+  filter: blur(calc(6px + 22px * var(--gesture-level, 0)));
+  will-change: opacity, filter;
 }
 
 .hand-overlay canvas {
@@ -553,14 +1190,28 @@ body[data-page="gesture"] {
 
 .gesture-left select {
   appearance: none;
-  background: #1a1a1a;
+  color-scheme: dark;
+  background: #141519;
   color: var(--gesture-accent);
-  border: 1px solid #3a3428;
-  border-radius: 4px;
-  font: inherit;
-  font-size: 13px;
-  padding: 4px 10px;
+  border: 1.5px solid var(--gesture-accent);
+  border-radius: 0;
+  font-family: var(--fm);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 7px 12px;
   cursor: pointer;
+}
+
+.gesture-left select:hover {
+  background: #1b1c21;
+}
+
+/* Menú desplegable en oscuro, con la misma fuente que `/`. */
+.gesture-left select option,
+.gesture-left select optgroup {
+  background: #141519;
+  color: var(--gesture-accent);
+  font-family: var(--fm);
 }
 
 .gesture-keys select {
@@ -568,9 +1219,27 @@ body[data-page="gesture"] {
   text-align: center;
 }
 
+/* El selector de preset de `/gesture`: más evidente (caja acentuada + flecha). */
+.gesture-presets {
+  position: relative;
+}
+
 .gesture-presets select {
-  min-width: 150px;
-  max-width: 220px;
+  min-width: 168px;
+  max-width: 240px;
+  padding-right: 28px;
+  font-size: 13px;
+}
+
+.gesture-presets::after {
+  content: "▾";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--gesture-accent);
+  pointer-events: none;
 }
 
 .gesture-create {
@@ -715,14 +1384,34 @@ body[data-page="gesture"] {
   cursor: pointer;
 }
 
-.gesture-options-panel input[type="color"] {
-  width: 44px;
+.gesture-options-panel .options-row-stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gesture-options-panel .swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gesture-options-panel .swatch {
+  width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #3a3428;
-  border-radius: 4px;
-  background: none;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   cursor: pointer;
+}
+
+.gesture-options-panel .swatch:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.gesture-options-panel .swatch[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #1a1a1a, 0 0 0 4px var(--gesture-accent);
 }
 
 .gesture-options-panel input[type="checkbox"] {

@@ -186,3 +186,44 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     expect(values).toContain("user:Persistente");
   });
 });
+
+describe("TimbrePanel — compartir sonido", () => {
+  it("añade Exportar / Importar / Pedir a una IA a la fila de preset sin mover Save/Delete", () => {
+    const row = panel.element.querySelector<HTMLElement>(".preset-save")!;
+    const labels = [...row.querySelectorAll<HTMLButtonElement>(".sound-share-btn")].map(
+      (b) => b.textContent,
+    );
+    expect(labels).toEqual(["Exportar", "Importar", "Pedir a una IA"]);
+    const { saveBtn, deleteBtn } = saveRowParts(panel.element);
+    expect(saveBtn.textContent).toBe("Save");
+    expect(deleteBtn.textContent).toBe("Delete");
+  });
+
+  it("Importar → nombre + JSON válido → Cargar aplica el timbre y lo guarda seleccionado", () => {
+    [...panel.element.querySelectorAll<HTMLButtonElement>("button")]
+      .find((b) => b.textContent === "Importar")!
+      .click();
+
+    const popup = panel.element.querySelector<HTMLElement>(".sound-share-popup")!;
+    popup.querySelector<HTMLInputElement>("input[type=text]")!.value = "Morat Acústico";
+    popup.querySelector<HTMLTextAreaElement>("textarea")!.value = JSON.stringify({
+      version: 2,
+      engine: "subtractive",
+      fx: { reverb: { wet: 0.99 } },
+    });
+    [...panel.element.querySelectorAll<HTMLButtonElement>("button")]
+      .find((b) => b.textContent === "Cargar")!
+      .click();
+
+    expect(lastPreset(synth).fx.reverb.wet).toBe(0.99);
+    expect(lastPreset(synth).version).toBe(2);
+
+    const select = panel.element.querySelector<HTMLSelectElement>("select")!;
+    expect(select.value).toBe("user:Morat Acústico");
+    expect(
+      [...select.querySelectorAll<HTMLOptionElement>("option")].some(
+        (o) => o.value === "user:Morat Acústico",
+      ),
+    ).toBe(true);
+  });
+});

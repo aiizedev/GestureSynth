@@ -49,9 +49,7 @@ export class ChordHud {
 
     this.chordEl.textContent = info.label;
     this.notesEl.textContent = info.notes.join("  ·  ");
-    this.triggerEl.textContent = state.triggerActive
-      ? "● sonando"
-      : "○ en silencio";
+    this.triggerEl.textContent = state.triggerActive ? "sonando" : "en silencio";
     this.triggerEl.dataset.on = String(state.triggerActive);
 
     const { width, height } = this.canvas;

@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    .root {
+      --ink: #0e0f12;
+      --paper: #e8e6df;
+      --rule: #35363c;
+      --hair: #202126;
+      --muted: #8a8b91;
+      --accent-ink: #17130d;
+      --fd: "Space Grotesk", system-ui, sans-serif;
+      --fm: "Spline Sans Mono", ui-monospace, monospace;
+      background: var(--ink); color: var(--paper); min-height: 820px;
+      font-family: var(--fd); font-size: 14px; line-height: 1.4;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; border-left: 1.5px solid var(--rule); border-right: 1.5px solid var(--rule); }
+    .lbl { font-family: var(--fm); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
+    .hd { padding: 24px 26px 18px; border-bottom: 1.5px solid var(--rule); }
+    .hd h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; text-transform: uppercase; }
+    .hd p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 620px; }
+    .hd .drv { font-family: var(--fm); font-size: 12px; color: var(--accent); margin-top: 8px; }
+
+    .item { display: grid; grid-template-columns: 210px 160px 1fr; align-items: center; gap: 22px;
+      padding: 16px 26px; border-bottom: 1.5px solid var(--rule); }
+    .item:last-child { border-bottom: none; }
+    .item .name { font-weight: 500; }
+    .item .name span { display: block; margin-top: 3px; }
+    .item .note { color: var(--muted); font-size: 13px; }
+    .demo { height: 48px; display: flex; align-items: center; }
+
+    @keyframes bob { 50% { transform: scaleY(0.45); } }
+    @keyframes caret { 50% { opacity: 0; } }
+    @keyframes fillsnap { 0%, 40% { width: 0; } 41%, 100% { width: 100%; } }
+    @keyframes padsnap { 0%, 45% { background: transparent; } 46%, 92% { background: var(--accent); } 100% { background: transparent; } }
+
+    .d-bars { display: flex; align-items: flex-end; gap: 4px; height: 40px; transform-origin: bottom;
+      transform: scaleY(calc(0.4 + var(--level, 0) * 0.75)); }
+    .d-bars i { width: 8px; height: 40px; background: var(--paper); transform-origin: bottom; animation: bob 1s ease-in-out infinite; }
+    .d-bars i:nth-child(2) { animation-delay: -0.3s; } .d-bars i:nth-child(3) { animation-delay: -0.6s; }
+    .d-bars i:nth-child(4) { animation-delay: -0.15s; background: var(--accent); } .d-bars i:nth-child(5) { animation-delay: -0.5s; }
+
+    .d-line { width: 150px; height: 1.5px; background: var(--hair); position: relative; }
+    .d-line::after { content: ""; position: absolute; inset: 0 auto 0 0; background: var(--accent);
+      width: calc(var(--level, 0) * 100%); }
+
+    .d-go { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; font-family: var(--fm); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-ink); position: relative; overflow: hidden; border: 1.5px solid var(--rule); }
+    .d-go span.f { position: absolute; inset: 0; background: var(--accent); animation: fillsnap 2.4s steps(1) infinite; z-index: 0; }
+    .d-go span.t { position: relative; z-index: 1; }
+
+    .d-pad { width: 44px; height: 38px; border: 1.5px solid var(--rule); animation: padsnap 2s steps(1) infinite; }
+
+    .d-caret { font-family: var(--fm); font-size: 13px; color: var(--accent); }
+    .d-caret::after { content: "_"; animation: caret 1.1s step-end infinite; }
+
+    @keyframes knobturn { 0%, 45% { transform: translateX(-50%) rotate(-70deg); } 46%, 100% { transform: translateX(-50%) rotate(42deg); } }
+    .d-knob { width: 40px; height: 40px; border: 1.5px solid var(--rule); border-radius: 50%; position: relative; }
+    .d-knob::after { content: ""; position: absolute; left: 50%; top: 3px; width: 2px; height: 13px; background: var(--accent);
+      transform-origin: 50% 17px; animation: knobturn 2.2s steps(1) infinite; }
+    .d-knob b { position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); font-family: var(--fm);
+      font-size: 10px; color: color-mix(in srgb, var(--paper) 55%, transparent); white-space: nowrap; }
+  </style>
+</helmet>
+
+<div class="root" style="--accent: {{accent}}; --level: 0.42">
+  <div class="wrap">
+    <div class="hd">
+      <h1>Sistema de movimiento</h1>
+      <p>Editorial: el movimiento es contenido y va a tiempo. Los cambios entran de golpe (snap), no con transiciones largas; lo único continuo es lo que sigue al sonido.</p>
+      <div class="drv">nivel de salida · synth.getLevel() → anime.js → --level (0…1)</div>
+    </div>
+
+    <div class="item">
+      <div class="name">Medidor de nivel<span class="lbl">transporte · continuo</span></div>
+      <div class="demo"><div class="d-bars"><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="note">Barras que rebotan a tiempo; el conjunto se estira con el volumen real de salida.</div>
+    </div>
+    <div class="item">
+      <div class="name">Línea de acento<span class="lbl">cabecera · continuo</span></div>
+      <div class="demo"><div class="d-line"></div></div>
+      <div class="note">Una hairline bajo la cabecera se llena de 0 a 100 % siguiendo el nivel. El único adorno.</div>
+    </div>
+    <div class="item">
+      <div class="name">Botón Empezar<span class="lbl">transporte · snap</span></div>
+      <div class="demo"><span class="d-go"><span class="f"></span><span class="t">Sonando</span></span></div>
+      <div class="note">Al arrancar el audio, el bloque de acento entra de golpe. Sin bloom, sin degradado.</div>
+    </div>
+    <div class="item">
+      <div class="name">Pad de acorde<span class="lbl">acordes · snap</span></div>
+      <div class="demo"><div class="d-pad"></div></div>
+      <div class="note">Mantener un acorde invierte el pad a acento al instante; soltarlo lo devuelve.</div>
+    </div>
+    <div class="item">
+      <div class="name">Caret de estado<span class="lbl">HUD</span></div>
+      <div class="demo"><span class="d-caret">sonando</span></div>
+      <div class="note">Un guion bajo parpadea junto al estado; para cuando el motor está detenido.</div>
+    </div>
+    <div class="item">
+      <div class="name">Potenciómetros de Advanced<span class="lbl">timbre · snap</span></div>
+      <div class="demo"><span class="d-knob"><b>2.0</b></span></div>
+      <div class="note">Los parámetros del sintetizador se giran, no se teclean. La aguja salta a la posición nueva; el número queda debajo, pequeño, como referencia.</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{
+  "accent": {"editor": "color", "default": "#f3c69b", "options": ["#f3c69b", "#ecdca0", "#f0b3c1", "#a8e0c8", "#a8c8f0", "#c9b8f0"], "section": "Tema"},
+  "$preview": {"width": 1000, "height": 820}
+}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._t0 = performance.now();
+    this._lv = 0.42;
+    const tick = (t) => {
+      const s = (t - this._t0) / 1000;
+      let v = 0.36 + 0.28 * Math.sin(s * 0.8) + 0.14 * Math.sin(s * 3.3) + 0.08 * Math.sin(s * 9.4);
+      v = Math.max(0, Math.min(1, v));
+      this._lv += (v - this._lv) * 0.1;
+      const r = document.querySelector('.root');
+      if (r) r.style.setProperty('--level', this._lv.toFixed(3));
+      this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+  componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); }
+  renderVals() {
+    return { accent: this.props.accent ?? '#f3c69b' };
+  }
+}
+</script>
+</body>
+</html>

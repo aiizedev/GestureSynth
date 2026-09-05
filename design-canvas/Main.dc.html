@@ -1,0 +1,348 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .root {
+      --ink: #0e0f12;
+      --paper: #e8e6df;
+      --rule: #35363c;
+      --hair: #202126;
+      --muted: #8a8b91;
+      --accent-ink: #17130d;
+      --fd: "Space Grotesk", system-ui, -apple-system, sans-serif;
+      --fm: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
+      background: var(--ink);
+      color: var(--paper);
+      min-height: 1400px;
+      font-family: var(--fd);
+      font-size: 14px;
+      line-height: 1.35;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; border-left: 1.5px solid var(--rule); border-right: 1.5px solid var(--rule); }
+    .lbl { font-family: var(--fm); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+    .row { border-bottom: 1.5px solid var(--rule); }
+
+    @keyframes bob { 50% { transform: scaleY(0.5); } }
+    @keyframes caret { 50% { opacity: 0; } }
+    .no-motion .field-lvl i, .no-motion .st b::after { animation: none !important; }
+
+    /* masthead */
+    .masthead { position: relative; display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 20px; padding: 24px 26px 18px; flex-wrap: wrap; }
+    .masthead h1 { margin: 0; font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 0.94; text-transform: uppercase; }
+    .masthead .meta { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .letsplay { align-self: flex-end; display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: var(--accent-ink); font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; font-size: 13px; padding: 9px 16px; margin-bottom: 2px; }
+    .letsplay:hover { text-decoration: none; filter: brightness(1.06); }
+    .theme { display: flex; align-items: center; gap: 8px; }
+    .theme .lbl { color: var(--muted); }
+    .sw { width: 15px; height: 15px; border-radius: 50%; display: inline-block; outline-offset: 2px; cursor: pointer; }
+    .masthead::after { content: ""; position: absolute; left: 0; bottom: -1.5px; height: 1.5px;
+      width: calc(6% + var(--level, 0) * 94%); background: var(--accent); transition: width 0.14s linear; }
+    .is-stopped .masthead::after { width: 0; }
+
+    /* transport */
+    .transport { display: grid; grid-template-columns: 0.9fr 1.5fr 1fr; }
+    .transport > div { padding: 16px 22px; border-right: 1.5px solid var(--rule); }
+    .transport > div:last-child { border-right: none; }
+    .go { display: inline-flex; align-items: center; gap: 9px; background: var(--accent); color: var(--accent-ink);
+      padding: 11px 18px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 14px; margin-top: 10px; }
+    .go .sq { width: 8px; height: 8px; background: var(--accent-ink); }
+    .is-stopped .go { background: transparent; color: var(--paper); border: 1.5px solid var(--rule); }
+    .is-stopped .go .sq { background: var(--muted); }
+    .vol .big { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
+    .vol .big span { font-family: var(--fm); font-size: 13px; font-weight: 500; color: var(--muted); }
+    .vbar { height: 10px; border: 1.5px solid var(--rule); margin-top: 10px; position: relative; }
+    .vbar::after { content: ""; position: absolute; inset: 1px 66% 1px 1px; background: var(--accent); }
+    .field-lvl { display: flex; align-items: flex-end; gap: 4px; height: 52px; margin-top: 8px; transform-origin: bottom;
+      transform: scaleY(calc(0.4 + var(--level, 0) * 0.75)); transition: transform 0.14s linear; }
+    .field-lvl i { width: 8px; background: var(--paper); transform-origin: bottom; animation: bob 1.05s ease-in-out infinite; }
+    .field-lvl i:nth-child(1) { height: 22%; } .field-lvl i:nth-child(2) { height: 50%; animation-delay: -0.3s; }
+    .field-lvl i:nth-child(3) { height: 34%; animation-delay: -0.6s; } .field-lvl i:nth-child(4) { height: 74%; animation-delay: -0.15s; }
+    .field-lvl i:nth-child(5) { height: 56%; animation-delay: -0.5s; } .field-lvl i:nth-child(6) { height: 92%; animation-delay: -0.2s; }
+    .field-lvl i:nth-child(7) { height: 64%; animation-delay: -0.7s; } .field-lvl i:nth-child(8) { height: 100%; background: var(--accent); animation-delay: -0.4s; }
+    .field-lvl i:nth-child(9) { height: 44%; animation-delay: -0.1s; } .field-lvl i:nth-child(10) { height: 78%; animation-delay: -0.55s; }
+    .is-stopped .field-lvl i { animation-play-state: paused; opacity: 0.45; }
+
+    /* columns */
+    .cols { display: grid; grid-template-columns: 1fr 1fr; }
+    .cols > section { padding: 20px 24px 22px; }
+    .cols > section:first-child { border-right: 1.5px solid var(--rule); }
+    section h2 { margin: 0 0 14px; font-family: var(--fm); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--paper); }
+
+    .params { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--rule); margin-bottom: 16px; }
+    .params > div { padding: 9px 11px; border-right: 1.5px solid var(--rule); border-bottom: 1.5px solid var(--rule); }
+    .params > div:nth-child(2n) { border-right: none; }
+    .params > div:nth-last-child(-n+2) { border-bottom: none; }
+    .params .v { font-size: 15px; font-weight: 500; margin-top: 3px; }
+    .params.one { grid-template-columns: 1fr; }
+    .params.one > div { border-right: none; }
+
+    .grid7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1.5px solid var(--rule); margin-bottom: 6px; }
+    .grid7 > div { padding: 12px 0 9px; text-align: center; border-right: 1.5px solid var(--rule); }
+    .grid7 > div:last-child { border-right: none; }
+    .grid7 b { font-size: 15px; font-weight: 700; }
+    .grid7 small { display: block; font-family: var(--fm); font-size: 10px; color: var(--muted); }
+    .grid7 .on { background: var(--accent); color: var(--accent-ink); }
+    .grid7 .on small { color: color-mix(in srgb, var(--accent-ink) 70%, transparent); }
+    .grid7.min b { font-weight: 500; font-style: italic; }
+
+    .save { display: flex; flex-wrap: wrap; border: 1.5px solid var(--rule); margin-bottom: 16px; }
+    .save > span { padding: 8px 12px; border-right: 1.5px solid var(--rule); font-family: var(--fm); font-size: 12px; }
+    .save > span:last-child { border-right: none; }
+    .save .name { flex: 1; min-width: 96px; color: var(--muted); }
+    .save .pri { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+
+    .scope { border: 1.5px solid var(--rule); height: 108px; position: relative; margin-bottom: 16px; }
+    .scope svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .scope .wv { fill: none; stroke: var(--paper); stroke-width: 2; }
+    .scope .dv { stroke: var(--hair); stroke-width: 1; }
+    .scope .tg { position: absolute; inset: auto 0 4px 0; display: flex; justify-content: space-around;
+      font-family: var(--fm); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+
+    .knobs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1.5px solid var(--rule); }
+    .knobs > div { padding: 14px 6px 12px; text-align: center; border-right: 1.5px solid var(--rule); }
+    .knobs > div:last-child { border-right: none; }
+    .knobs .n { width: 44px; height: 44px; border: 1.5px solid var(--rule); border-radius: 50%; margin: 0 auto 8px; position: relative; }
+    .knobs .n::after { content: ""; position: absolute; left: 50%; top: 3px; width: 2px; height: 15px; background: var(--accent); transform-origin: 50% 19px; }
+    .knobs > div:nth-child(1) .n::after { transform: translateX(-50%) rotate(-64deg); }
+    .knobs > div:nth-child(2) .n::after { transform: translateX(-50%) rotate(52deg); }
+    .knobs > div:nth-child(3) .n::after { transform: translateX(-50%) rotate(88deg); }
+    .knobs > div:nth-child(4) .n::after { transform: translateX(-50%) rotate(-6deg); }
+    .knobs .lbl { display: block; }
+    .knobs .v { font-size: 15px; font-weight: 500; margin-top: 2px; }
+
+    /* advanced — visible, not collapsed */
+    .adv { padding: 0; }
+    .adv .advhd { display: flex; align-items: center; gap: 10px; padding: 12px 24px; border-bottom: 1.5px solid var(--rule); }
+    .adv .advhd .lbl { font-size: 11px; color: var(--paper); }
+    .adv .advhd .chev { color: var(--accent); font-size: 11px; }
+    .advgrid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .advcol { border-right: 1.5px solid var(--rule); }
+    .advcol:last-child { border-right: none; }
+    .advcol > .ch { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 9px 14px; border-bottom: 1.5px solid var(--rule); font-family: var(--fm); font-size: 10px;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+    .pkrow { display: grid; grid-template-columns: repeat(2, 1fr); }
+    .pkrow.three { grid-template-columns: repeat(3, 1fr); }
+    .pk { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px 11px;
+      border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+    .pkrow:not(.three) .pk:nth-child(2n) { border-right: none; }
+    .pkrow.three .pk:nth-child(3n) { border-right: none; }
+    .advcol > .pkrow:last-child .pk { border-bottom: none; }
+    .pk .d { width: 40px; height: 40px; border: 1.5px solid var(--rule); border-radius: 50%; position: relative;
+      background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--paper) 6%, transparent), transparent 62%); }
+    .pk .d::after { content: ""; position: absolute; left: 50%; top: 3px; width: 2px; height: 13px; background: var(--accent);
+      border-radius: 1px; transform-origin: 50% 17px; transform: translateX(-50%) rotate(var(--a, 0deg)); }
+    .pk .k { font-family: var(--fm); font-size: 10px; letter-spacing: 0.03em; color: var(--muted); text-align: center; }
+    .pk .v { font-family: var(--fm); font-size: 10px; color: color-mix(in srgb, var(--paper) 55%, transparent); }
+    .seg { display: inline-flex; border: 1px solid var(--rule); }
+    .seg span { padding: 2px 6px; font-family: var(--fm); font-size: 10px; border-right: 1px solid var(--rule); color: var(--muted); }
+    .seg span:last-child { border-right: none; }
+    .seg span.a { background: var(--accent); color: var(--accent-ink); }
+
+    /* hud */
+    .hud { display: flex; align-items: baseline; gap: 22px; padding: 16px 26px; flex-wrap: wrap; }
+    .hud .deg { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; }
+    .hud .nt { font-family: var(--fm); font-size: 13px; color: var(--muted); letter-spacing: 0.08em; }
+    .hud .st { margin-left: auto; font-family: var(--fm); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .hud .st b { color: var(--accent); }
+    .hud .st b::after { content: "_"; margin-left: 1px; animation: caret 1.1s step-end infinite; }
+    .is-stopped .hud .st b { color: var(--muted); }
+    .is-stopped .hud .st b::after { animation: none; opacity: 0; }
+  </style>
+</helmet>
+
+<div class="root {{rootClass}}" style="--accent: {{accent}}; --level: 0.4">
+  <div class="wrap">
+    <div class="row masthead">
+      <h1>Estación<br>de sonido</h1>
+      <div class="meta">
+        <a class="letsplay" href="#">Let&#39;s play &#8594;</a>
+        <div class="lbl">GestureSynth · sintetizador de acordes</div>
+        <div class="theme">
+          <span class="lbl">Tema</span>
+          <sc-for list="{{swatches}}" as="sw" hint-placeholder-count="6">
+            <span class="sw" style="background: {{sw.hex}}; outline: {{sw.ring}}"></span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div class="row transport">
+      <div>
+        <div class="lbl">Motor</div>
+        <span class="go"><span class="sq"></span>{{startLabel}}</span>
+      </div>
+      <div class="vol">
+        <div class="lbl">Volumen master</div>
+        <div class="big">&#8722;6 <span>dB</span></div>
+        <div class="vbar"></div>
+      </div>
+      <div>
+        <div class="lbl">Nivel</div>
+        <div class="field-lvl"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <div class="row cols">
+      <section>
+        <h2>Acordes</h2>
+        <div class="params">
+          <div><div class="lbl">Tonalidad</div><div class="v">C</div></div>
+          <div><div class="lbl">Modo</div><div class="v">mayor</div></div>
+          <div><div class="lbl">Voicing</div><div class="v">1 — tríada (1-3-5)</div></div>
+          <div><div class="lbl">Octava</div><div class="v">0</div></div>
+        </div>
+        <div class="lbl" style="margin-bottom: 6px;">Mayores · I–VII</div>
+        <div class="grid7">
+          <div class="on"><b>I</b><small>C</small></div><div><b>II</b><small>D</small></div><div><b>III</b><small>E</small></div>
+          <div><b>IV</b><small>F</small></div><div><b>V</b><small>G</small></div><div><b>VI</b><small>A</small></div><div><b>VII</b><small>B</small></div>
+        </div>
+        <div class="lbl" style="margin: 10px 0 6px;">menores · i–vii</div>
+        <div class="grid7 min">
+          <div><b>i</b><small>Cm</small></div><div><b>ii</b><small>Dm</small></div><div><b>iii</b><small>Em</small></div>
+          <div><b>iv</b><small>Fm</small></div><div><b>v</b><small>Gm</small></div><div><b>vi</b><small>Am</small></div><div><b>vii</b><small>Bm</small></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Timbre</h2>
+        <div class="params one">
+          <div><div class="lbl">Preset</div><div class="v">Warm Pad</div></div>
+        </div>
+        <div class="save">
+          <span class="name">nombre…</span><span class="pri">Save</span><span>Delete</span>
+          <span>Exportar</span><span>Importar</span><span>Pedir a una IA</span>
+        </div>
+        <div class="scope">
+          <svg viewBox="0 0 540 108" preserveAspectRatio="none">
+            <path class="dv" d="M135 0 V108 M270 0 V108 M405 0 V108" />
+            <path class="wv" d="M0 54 C 28 12, 56 12, 84 54 S 140 96, 178 54 236 18 270 54 C 310 92, 346 22, 386 56 S 452 28, 500 60 S 535 90, 540 52" />
+          </svg>
+          <div class="tg"><span>osc</span><span>filter</span><span>envelope</span></div>
+        </div>
+        <div class="knobs">
+          <div><div class="n"></div><span class="lbl">Bright</span><div class="v">42</div></div>
+          <div><div class="n"></div><span class="lbl">Thick</span><div class="v">67</div></div>
+          <div><div class="n"></div><span class="lbl">Space</span><div class="v">79</div></div>
+          <div><div class="n"></div><span class="lbl">Motion</span><div class="v">40</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="row adv">
+      <div class="advhd"><span class="chev">▾</span><span class="lbl">Advanced — potenciómetros del sintetizador</span></div>
+      <div class="advgrid">
+        <div class="advcol">
+          <div class="ch"><span>Oscillator</span><span class="seg"><span>Sine</span><span>Tri</span><span class="a">Saw</span><span>Sqr</span></span></div>
+          <div class="pkrow">
+            <div class="pk"><span class="d" style="--a: 135deg"></span><span class="k">Unison</span><span class="v">3</span></div>
+            <div class="pk"><span class="d" style="--a: 27deg"></span><span class="k">Detune</span><span class="v">30 ct</span></div>
+          </div>
+        </div>
+        <div class="advcol">
+          <div class="ch"><span>Filter</span><span class="seg"><span>12</span><span class="a">24</span><span>48</span></span></div>
+          <div class="pkrow three">
+            <div class="pk"><span class="d" style="--a: -108deg"></span><span class="k">Cutoff</span><span class="v">900 Hz</span></div>
+            <div class="pk"><span class="d" style="--a: -67deg"></span><span class="k">Reson</span><span class="v">3.0</span></div>
+            <div class="pk"><span class="d" style="--a: -45deg"></span><span class="k">Env Amt</span><span class="v">2.0</span></div>
+          </div>
+          <div class="pkrow">
+            <div class="pk"><span class="d" style="--a: -63deg"></span><span class="k">f·Attack</span><span class="v">0.80 s</span></div>
+            <div class="pk"><span class="d" style="--a: -45deg"></span><span class="k">f·Decay</span><span class="v">1.00 s</span></div>
+            <div class="pk"><span class="d" style="--a: 27deg"></span><span class="k">f·Sustain</span><span class="v">0.60</span></div>
+            <div class="pk"><span class="d" style="--a: -34deg"></span><span class="k">f·Release</span><span class="v">1.50 s</span></div>
+          </div>
+        </div>
+        <div class="advcol">
+          <div class="ch"><span>Envelope</span></div>
+          <div class="pkrow">
+            <div class="pk"><span class="d" style="--a: -36deg"></span><span class="k">Attack</span><span class="v">1.10 s</span></div>
+            <div class="pk"><span class="d" style="--a: -81deg"></span><span class="k">Decay</span><span class="v">0.60 s</span></div>
+            <div class="pk"><span class="d" style="--a: 108deg"></span><span class="k">Sustain</span><span class="v">0.90</span></div>
+            <div class="pk"><span class="d" style="--a: 40deg"></span><span class="k">Release</span><span class="v">2.60 s</span></div>
+          </div>
+        </div>
+        <div class="advcol">
+          <div class="ch"><span>Effects</span></div>
+          <div class="pkrow">
+            <div class="pk"><span class="d" style="--a: -130deg"></span><span class="k">Drive</span><span class="v">0.02</span></div>
+            <div class="pk"><span class="d" style="--a: -27deg"></span><span class="k">Chorus</span><span class="v">0.40</span></div>
+            <div class="pk"><span class="d" style="--a: -108deg"></span><span class="k">Delay</span><span class="v">0.10</span></div>
+            <div class="pk"><span class="d" style="--a: -60deg"></span><span class="k">Feedback</span><span class="v">0.25</span></div>
+            <div class="pk"><span class="d" style="--a: 14deg"></span><span class="k">Reverb</span><span class="v">0.55</span></div>
+            <div class="pk"><span class="d" style="--a: -99deg"></span><span class="k">Glide</span><span class="v">0.04 s</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <span class="deg">C · I</span>
+      <span class="nt">C · E · G</span>
+      <span class="st">estado · <b>{{stateWord}}</b></span>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{
+  "playing": {"editor": "boolean", "default": true, "section": "Estado"},
+  "motion": {"editor": "boolean", "default": true, "section": "Estado"},
+  "accent": {"editor": "color", "default": "#f3c69b", "options": ["#f3c69b", "#ecdca0", "#f0b3c1", "#a8e0c8", "#a8c8f0", "#c9b8f0"], "section": "Tema"},
+  "$preview": {"width": 1200, "height": 1400}
+}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._t0 = performance.now();
+    this._lv = 0.4;
+    const tick = (t) => {
+      const s = (t - this._t0) / 1000;
+      let v = 0.34 + 0.28 * Math.sin(s * 0.85) + 0.13 * Math.sin(s * 3.4) + 0.07 * Math.sin(s * 10.1);
+      v = Math.max(0, Math.min(1, v));
+      const target = this._on ? v : 0.02;
+      this._lv += (target - this._lv) * 0.1;
+      const r = document.querySelector('.root');
+      if (r) r.style.setProperty('--level', this._lv.toFixed(3));
+      this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+  }
+  componentWillUnmount() { if (this._raf) cancelAnimationFrame(this._raf); }
+  renderVals() {
+    const SW = ['#f3c69b', '#ecdca0', '#f0b3c1', '#a8e0c8', '#a8c8f0', '#c9b8f0'];
+    const acc = this.props.accent ?? '#f3c69b';
+    const playing = this.props.playing !== false;
+    const motion = this.props.motion !== false;
+    this._on = playing && motion;
+    return {
+      accent: acc,
+      swatches: SW.map((hex) => ({
+        hex,
+        ring: hex.toLowerCase() === acc.toLowerCase() ? '2px solid var(--paper)' : '1px solid var(--rule)',
+      })),
+      startLabel: playing ? 'Sonando' : 'Empezar',
+      stateWord: playing ? 'sonando' : 'en silencio',
+      rootClass: (playing ? 'is-playing ' : 'is-stopped ') + (motion ? 'is-motion' : 'no-motion'),
+    };
+  }
+}
+</script>
+</body>
+</html>

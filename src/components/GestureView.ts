@@ -8,6 +8,7 @@
  * menú de opciones (color principal, HUD de identificación de manos).
  */
 import { readChordIntent } from "../tracking/handChord";
+import { dynamicsFromHeight, handHeight } from "../tracking/handDynamics";
 import { assignHands, type HandObservation, type HandsFrame } from "../tracking/handModel";
 import {
   fingersUp,
@@ -18,6 +19,7 @@ import {
   type FingersUp,
   type VoicingIntent,
 } from "../tracking/handPose";
+import type { TimbrePreset } from "../audio/presets/types";
 import type { ChordIntent } from "../utils/gestureMapping";
 import { describeChord, DEGREE_LABELS } from "../utils/musicTheory";
 import { GestureOptions } from "./GestureOptions";
@@ -47,13 +49,25 @@ function chordSuffix(
   }
 }
 
+/** Lo que las manos indican en un frame: acorde + altura de la mano derecha. */
+export interface PerformFrame {
+  /** Acorde que indican las manos (`null` = sin mano izquierda fiable). */
+  chord: ChordIntent | null;
+  /** Altura de la mano derecha 0..1 (1 = arriba del todo), `null` si no hay. */
+  rightHeight: number | null;
+}
+
 export interface GestureViewOptions {
   /** Arranca cámara + modelo; puede lanzar un `CameraError` con `.kind`. */
   onActivate: () => Promise<void>;
-  /** Acorde que indican las manos en cada frame (`null` = sin mano izquierda). */
-  onChord?: (chord: ChordIntent | null) => void;
+  /** Lectura de interpretación de cada frame (acorde + dinámica). */
+  onPerform?: (frame: PerformFrame) => void;
   /** Controles extra en la columna izquierda, bajo el selector de tonalidad. */
   leftControls?: HTMLElement[];
+  /** Sonido actual a exportar desde el menú ⚙ (junto con `onImport`). */
+  getSound?: () => TimbrePreset;
+  /** Aplicar y guardar un sonido importado desde el menú ⚙ con su nombre. */
+  onImport?: (preset: TimbrePreset, name: string) => void;
 }
 
 const START_ERROR: Record<string, string> = {
@@ -63,10 +77,20 @@ const START_ERROR: Record<string, string> = {
   error: "no se pudo iniciar la cámara",
 };
 
+// --- Aura audio-reactiva: nivel de salida del Synth → `--gesture-level` -----
+/** El medidor de un pad suave da valores bajos (~0.05..0.25); esto lo abre. */
+const LEVEL_GAIN = 6;
+/** Expansión suave de la parte baja (0..1 → 0..1, más "vida" cerca de 0). */
+const LEVEL_CURVE = 0.7;
+/** Constantes del seguidor asimétrico: sube rápido, baja lento (cola musical). */
+const LEVEL_ATTACK_MS = 90;
+const LEVEL_RELEASE_MS = 700;
+
 export class GestureView {
   readonly element: HTMLDivElement;
 
   private readonly overlay = new HandOverlayCanvas();
+  private readonly aura: HTMLDivElement;
   private readonly startOverlay: HTMLDivElement;
   private readonly startText: HTMLDivElement;
   private readonly hud: HTMLDivElement;
@@ -77,14 +101,21 @@ export class GestureView {
   private busy = false;
   private latest: HandsFrame | null = null;
 
+  /** Nivel suavizado 0..1 que alimenta el aura (`--gesture-level`). */
+  private level = 0;
+  private lastLevelTs = 0;
+
   private chordKey = "C";
-  private readonly onChord?: (chord: ChordIntent | null) => void;
+  private readonly onPerform?: (frame: PerformFrame) => void;
 
   constructor(opts: GestureViewOptions) {
-    this.onChord = opts.onChord;
+    this.onPerform = opts.onPerform;
 
     this.element = document.createElement("div");
     this.element.className = "gesture-view";
+
+    this.aura = document.createElement("div");
+    this.aura.className = "gesture-aura";
 
     this.hud = document.createElement("div");
     this.hud.className = "gesture-hud";
@@ -97,8 +128,11 @@ export class GestureView {
       onAdvanced: (show) => {
         this.hud.hidden = !show;
       },
+      getSound: opts.getSound,
+      onImport: opts.onImport,
     });
     this.element.style.setProperty("--gesture-accent", options.accent);
+    this.element.style.setProperty("--gesture-level", "0");
     this.hud.hidden = !options.advanced;
 
     const keys = new KeySelector({
@@ -132,6 +166,7 @@ export class GestureView {
 
     this.element.append(
       this.overlay.element,
+      this.aura,
       this.hud,
       this.chordEl,
       leftPanel,
@@ -161,6 +196,27 @@ export class GestureView {
     }
   }
 
+  /**
+   * Nivel de salida del `Synth` (0..1) → intensidad del aura. Se llama en CADA
+   * frame de animación (no solo en las detecciones), con un seguidor asimétrico
+   * frame-rate-independiente: el aura florece rápido y se apaga con una cola
+   * larga, siguiendo la envolvente real del pad.
+   */
+  setLevel(raw: number): void {
+    const safe = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+    const shaped = Math.pow(Math.min(1, safe * LEVEL_GAIN), LEVEL_CURVE);
+
+    const now = performance.now();
+    const dt = this.lastLevelTs ? now - this.lastLevelTs : 16;
+    this.lastLevelTs = now;
+
+    const tau = shaped > this.level ? LEVEL_ATTACK_MS : LEVEL_RELEASE_MS;
+    const k = 1 - Math.exp(-dt / tau);
+    this.level = Math.min(1, Math.max(0, this.level + (shaped - this.level) * k));
+
+    this.element.style.setProperty("--gesture-level", this.level.toFixed(3));
+  }
+
   /** Detección nueva: actualiza HUD + FPS + acorde y repinta. */
   update(video: HTMLVideoElement, frame: HandsFrame): void {
     if (this.lastTs > 0) {
@@ -186,7 +242,10 @@ export class GestureView {
     const { left, right } = assignHands(frame?.hands ?? []);
     const intent = readChordIntent(left, right, this.chordKey, "major");
     const rawVoicing = right ? readVoicing(right) : null;
-    this.onChord?.(intent);
+    this.onPerform?.({
+      chord: intent,
+      rightHeight: right ? handHeight(right) : null,
+    });
     this.renderChord(intent, rawVoicing);
   }
 
@@ -217,6 +276,7 @@ export class GestureView {
       <div>manos: ${hands.length}</div>
       <div>${slot("izq", roles.left, true)}</div>
       <div>${slot("der", roles.right)}</div>
+      <div>${dynLine(roles.right)}</div>
       <div>${this.fps()} fps · ${res}</div>
     `;
   }
@@ -270,6 +330,19 @@ function slot(
   const arrow =
     t >= TILT_THRESHOLD ? "▸ may" : t <= -TILT_THRESHOLD ? "◂ men" : "· vert";
   return `${base}  ${arrow}`;
+}
+
+/** Dinámica de la mano derecha: altura → volumen, y drive si pasa del umbral. */
+function dynLine(right: HandObservation | undefined): string {
+  if (!right) return `<span class="hud-dim">dinámica: —</span>`;
+  const h = handHeight(right);
+  const { volumeDb, drive } = dynamicsFromHeight(h);
+  const volTxt =
+    Math.abs(volumeDb) < 0.6
+      ? `vol ${volumeDb.toFixed(1)} dB (diseño)`
+      : `vol ${volumeDb > 0 ? "+" : ""}${volumeDb.toFixed(1)} dB`;
+  const driveTxt = drive > 0 ? ` · drive ${Math.round(drive * 100)}%` : "";
+  return `altura: ${Math.round(h * 100)}% · ${volTxt}${driveTxt}`;
 }
 
 /** T I M R P en mayúscula si el dedo está extendido, `·` si no. */

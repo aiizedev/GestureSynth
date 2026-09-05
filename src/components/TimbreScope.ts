@@ -1,32 +1,49 @@
 import type { TimbrePreset, Waveform } from "../audio/presets/types";
 
-const W = 300;
-const H = 150;
+const W = 560;
+const H = 128;
 
-const OSC_TOP = 6;
-const OSC_H = 38;
-const DIVIDER_Y = 52;
-const BOTTOM_TOP = 58;
-const BOTTOM_H = 78;
-
-const GAP = 12;
-const FILTER_W = 168;
-const ENV_W = W - FILTER_W - GAP;
-
-const BG = "#0f1117";
-const GRID = "#2a2f3d";
-const AXIS = "#4a5064";
-const OSC_LINE = "#e0b27e";
-const FILTER_LINE = "#6ea8fe";
-const ENV_LINE = "#7ee0c0";
-const TEXT = "#99a0b3";
-
-const F_MIN = 20;
-const F_MAX = 20000;
-const DB_TOP = 12;
-const DB_BOTTOM = -36;
+const MID = H / 2;
+const AMP = H / 2 - 16;
+const CYCLES = 4;
 
 const TWO_PI = Math.PI * 2;
+
+/**
+ * Colores del visualizador leídos del tema en vivo (`:root`), así el scope
+ * cambia de acento con `ThemePicker` sin recargar. Con fallbacks para tests /
+ * entornos sin CSS.
+ */
+function readVar(name: string, fallback: string): string {
+  try {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+    return v || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+interface ScopePalette {
+  bg: string;
+  grid: string;
+  osc: string;
+  line: string;
+  text: string;
+}
+
+function palette(): ScopePalette {
+  return {
+    bg: readVar("--panel-2", "#131418"),
+    grid: readVar("--rule", "#35363c"),
+    osc: readVar("--text", "#e8e6df"),
+    line: readVar("--accent", "#f3c69b"),
+    text: readVar("--muted", "#8a8b91"),
+  };
+}
+
+const SCOPE_FONT = '10px "Spline Sans Mono", ui-monospace, monospace';
 
 /** Un período (fase 0..1) de la onda pedida, en el rango -1..1. */
 function periodic(type: Waveform, phase: number): number {
@@ -43,15 +60,12 @@ function periodic(type: Waveform, phase: number): number {
   }
 }
 
-/**
- * Valor del oscilador en la fase `p`. En motor FM aplica modulación de fase
- * (`carrier + I·sin(ωm)`), así la vista también reacciona a Ratio / FM Amount.
- */
+/** Valor del oscilador en la fase `p` (con modulación de fase si el motor es FM). */
 function oscValue(preset: TimbrePreset, p: number): number {
   if (preset.engine === "fm" && preset.fm) {
     const ph =
       p +
-      ((preset.fm.modulationIndex * 0.1) *
+      (preset.fm.modulationIndex * 0.1 *
         Math.sin(TWO_PI * p * preset.fm.harmonicity)) /
         TWO_PI;
     return periodic(preset.oscillator.waveform, ph);
@@ -59,10 +73,29 @@ function oscValue(preset: TimbrePreset, p: number): number {
   return periodic(preset.oscillator.waveform, p);
 }
 
+/** Nivel de amplitud 0..1 de la envolvente en el tiempo normalizado `u` (0..1). */
+function ampAt(env: TimbrePreset["ampEnv"], u: number): number {
+  const hold = 0.4;
+  const total = env.attack + env.decay + hold + env.release || 1;
+  const t = u * total;
+  if (t < env.attack) return env.attack > 1e-3 ? t / env.attack : 1;
+  if (t < env.attack + env.decay) {
+    const k = env.decay > 1e-3 ? (t - env.attack) / env.decay : 1;
+    return 1 - (1 - env.sustain) * k;
+  }
+  if (t < env.attack + env.decay + hold) return env.sustain;
+  const k =
+    env.release > 1e-3
+      ? (t - env.attack - env.decay - hold) / env.release
+      : 1;
+  return env.sustain * (1 - Math.min(1, k));
+}
+
 /**
- * Visualizador del timbre. Dibuja, SÓLO a partir de los números del preset (sin
- * tocar audio): la forma de onda del oscilador (arriba), la respuesta del filtro
- * (abajo izq.) y la forma de la envolvente de amplitud (abajo der.).
+ * Visualizador del timbre: UNA onda continua que recorre el ancho y se
+ * transforma por zonas — oscilador crudo (izq.) → suavizado por el filtro
+ * (centro) → conformado por la envolvente de amplitud (der.). Dibuja SÓLO a
+ * partir de los números del preset (sin tocar audio).
  */
 export class TimbreScope {
   readonly element: HTMLDivElement;
@@ -82,193 +115,77 @@ export class TimbreScope {
   render(preset: TimbrePreset): void {
     const ctx = this.ctx;
     if (!ctx) return; // sin contexto 2D (p. ej. entorno de test)
+    const p = palette();
+
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = BG;
+    ctx.fillStyle = p.bg;
     ctx.fillRect(0, 0, W, H);
 
-    this.drawOscillator(ctx, preset);
-
-    ctx.strokeStyle = GRID;
+    // Línea media + divisores de zona.
+    ctx.strokeStyle = p.grid;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, DIVIDER_Y);
-    ctx.lineTo(W, DIVIDER_Y);
+    ctx.moveTo(0, MID);
+    ctx.lineTo(W, MID);
+    ctx.moveTo(W / 3, 0);
+    ctx.lineTo(W / 3, H);
+    ctx.moveTo((2 * W) / 3, 0);
+    ctx.lineTo((2 * W) / 3, H);
     ctx.stroke();
 
-    ctx.save();
-    ctx.translate(0, BOTTOM_TOP);
-    this.drawFilter(ctx, preset);
-    this.drawEnvelope(ctx, preset.ampEnv);
-    ctx.restore();
+    this.drawWave(ctx, preset, p);
 
-    ctx.fillStyle = TEXT;
-    ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
-    ctx.fillText(preset.engine === "fm" ? "osc (FM)" : "osc", 4, OSC_TOP + 8);
-    ctx.fillText("filter", 4, H - 4);
-    ctx.fillText("envelope", FILTER_W + GAP + 4, H - 4);
+    ctx.fillStyle = p.text;
+    ctx.font = SCOPE_FONT;
+    ctx.textAlign = "center";
+    ctx.fillText(preset.engine === "fm" ? "OSC · FM" : "OSC", W / 6, H - 8);
+    ctx.fillText("FILTER", W / 2, H - 8);
+    ctx.fillText("ENVELOPE", (5 * W) / 6, H - 8);
+    ctx.textAlign = "left";
   }
 
-  // --- Oscilador --------------------------------------------------------
-
-  private drawOscillator(
+  private drawWave(
     ctx: CanvasRenderingContext2D,
     preset: TimbrePreset,
+    p: ScopePalette,
   ): void {
-    const midY = OSC_TOP + OSC_H / 2;
-    const amp = OSC_H / 2 - 2;
-    const cycles = 2.5;
+    // Suavizado: uno base que redondea la onda (para que sierra/cuadrada no
+    // chirríen), + el del filtro (más oscuro → más suave), creciendo a la derecha.
+    const fm = preset.engine === "fm";
+    const base = 0.45;
+    const kMax = fm
+      ? base
+      : Math.max(base, Math.min(0.9, 1.05 - preset.filter.cutoff / 5500));
+    const delta = 0.16;
 
-    ctx.strokeStyle = AXIS;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, midY);
-    ctx.lineTo(W, midY);
-    ctx.stroke();
-
-    // Copia tenue desafinada cuando hay unísono (motor sustractivo).
-    if (preset.engine !== "fm" && preset.oscillator.unison > 0) {
-      ctx.strokeStyle = "rgba(224,178,126,0.28)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let x = 0; x <= W; x++) {
-        const p = (x / W) * cycles;
-        const drift = (x / W) * (preset.oscillator.spread / 50) * 0.6;
-        const y = midY - oscValue(preset, p + drift) * amp;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = OSC_LINE;
+    ctx.strokeStyle = p.osc;
     ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.shadowColor = p.line;
+    ctx.shadowBlur = 6;
     ctx.beginPath();
+
     for (let x = 0; x <= W; x++) {
-      const p = (x / W) * cycles;
-      const y = midY - oscValue(preset, p) * amp;
+      const u = x / W;
+      const ph = u * CYCLES;
+      const raw = oscValue(preset, ph);
+
+      // El suavizado entra suave desde la izquierda y llega a `kMax` a la derecha.
+      const fk = kMax * (0.35 + 0.65 * u);
+      const smooth =
+        0.4 * raw +
+        0.3 * oscValue(preset, ph - delta) +
+        0.3 * oscValue(preset, ph + delta);
+      const shaped = raw + (smooth - raw) * fk;
+
+      // Envolvente: conforma la amplitud a lo largo de todo el ancho.
+      const a = 0.12 + 0.88 * ampAt(preset.ampEnv, u);
+
+      const y = MID - shaped * AMP * a;
       if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
-  }
-
-  // --- Filtro (origen ya trasladado a BOTTOM_TOP) ----------------------
-
-  private drawFilter(
-    ctx: CanvasRenderingContext2D,
-    preset: TimbrePreset,
-  ): void {
-    const x0 = 0;
-    const w = FILTER_W;
-    const h = BOTTOM_H;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x0, 0, w, h);
-    ctx.clip();
-
-    ctx.strokeStyle = GRID;
-    ctx.lineWidth = 1;
-    for (const f of [100, 1000, 10000]) {
-      const x = x0 + this.freqX(f) * w;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = AXIS;
-    const yZero = this.dbY(0) * h;
-    ctx.beginPath();
-    ctx.moveTo(x0, yZero);
-    ctx.lineTo(x0 + w, yZero);
-    ctx.stroke();
-
-    if (preset.engine === "fm") {
-      ctx.fillStyle = TEXT;
-      ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText("FM engine — no filter", x0 + 10, h / 2);
-      ctx.restore();
-      return;
-    }
-
-    ctx.strokeStyle = FILTER_LINE;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let px = 0; px <= w; px += 2) {
-      const f = F_MIN * Math.pow(F_MAX / F_MIN, px / w);
-      const db = this.filterMagnitudeDb(
-        f,
-        preset.filter.cutoff,
-        preset.filter.resonance,
-        preset.filter.rolloff,
-      );
-      const y = this.dbY(db) * h;
-      if (px === 0) ctx.moveTo(x0 + px, y);
-      else ctx.lineTo(x0 + px, y);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(110,168,254,0.35)";
-    ctx.lineWidth = 1;
-    const xc = x0 + this.freqX(preset.filter.cutoff) * w;
-    ctx.beginPath();
-    ctx.moveTo(xc, 0);
-    ctx.lineTo(xc, h);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  private freqX(f: number): number {
-    return Math.log(f / F_MIN) / Math.log(F_MAX / F_MIN);
-  }
-
-  private dbY(db: number): number {
-    return (DB_TOP - db) / (DB_TOP - DB_BOTTOM);
-  }
-
-  private filterMagnitudeDb(
-    f: number,
-    cutoff: number,
-    resonance: number,
-    rolloff: number,
-  ): number {
-    const oct = Math.log2(f / cutoff);
-    const peak = resonance * 1.6;
-    const bump = peak * Math.exp(-(oct * oct) / (2 * 0.18 * 0.18));
-    const atten = oct > 0 ? rolloff * oct : 0;
-    return Math.max(DB_BOTTOM, Math.min(DB_TOP, bump + atten));
-  }
-
-  // --- Envolvente (origen ya trasladado a BOTTOM_TOP) ----------------
-
-  private drawEnvelope(
-    ctx: CanvasRenderingContext2D,
-    env: TimbrePreset["ampEnv"],
-  ): void {
-    const x0 = FILTER_W + GAP;
-    const w = ENV_W;
-    const h = BOTTOM_H;
-    const hold = 0.35;
-    const total = env.attack + env.decay + hold + env.release || 1;
-    const tx = (t: number) => x0 + (t / total) * w;
-    const ly = (level: number) => h - level * (h - 2) - 1;
-
-    ctx.strokeStyle = AXIS;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x0, h);
-    ctx.lineTo(x0 + w, h);
-    ctx.stroke();
-
-    ctx.strokeStyle = ENV_LINE;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tx(0), ly(0));
-    ctx.lineTo(tx(env.attack), ly(1));
-    ctx.lineTo(tx(env.attack + env.decay), ly(env.sustain));
-    ctx.lineTo(tx(env.attack + env.decay + hold), ly(env.sustain));
-    ctx.lineTo(tx(total), ly(0));
-    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 }

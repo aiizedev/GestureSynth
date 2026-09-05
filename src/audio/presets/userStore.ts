@@ -8,7 +8,23 @@ import { migratePreset } from "./index";
  *
  * No importa `tone`: sólo lee/escribe JSON.
  */
-const STORAGE_KEY = "gesturesynth.userPresets.v2";
+export const STORAGE_KEY = "gesturesynth.userPresets.v2";
+
+/**
+ * Evento de ventana que se emite tras `saveUserPreset` / `deleteUserPreset`. Lo
+ * escuchan los selectores de preset (`PresetSelector` en `/gesture`) para
+ * refrescar su dropdown sin recargar. Entre pestañas distintas ese refresco lo
+ * cubre el evento nativo `storage`.
+ */
+export const USER_PRESETS_EVENT = "gesturesynth:userpresets";
+
+function notifyChange(): void {
+  try {
+    window.dispatchEvent(new Event(USER_PRESETS_EVENT));
+  } catch {
+    /* sin `window` (tests node puros): nadie escucha, no pasa nada */
+  }
+}
 
 export interface UserPreset {
   name: string;
@@ -38,6 +54,7 @@ function write(list: UserPreset[]): void {
   } catch {
     /* almacenamiento no disponible o lleno: el preset vive sólo esta sesión */
   }
+  notifyChange();
 }
 
 export function listUserPresets(): UserPreset[] {

@@ -6,18 +6,24 @@ import { GestureView } from "./components/GestureView";
 import { PresetSelector } from "./components/PresetSelector";
 import { makeGestureApplier } from "./utils/gestureMapping";
 import { makeChordStabilizer } from "./tracking/chordStabilizer";
+import {
+  dynamicsFromHeight,
+  NEUTRAL_HEIGHT,
+  type Dynamics,
+} from "./tracking/handDynamics";
 
 /**
  * Entry de `/gesture` (fase 2): cámara → `HandLandmarkerSource` → `GestureView`,
- * y el acorde que leen las manos → `Synth` (a través de `makeGestureApplier`,
- * el mismo puente que usa el panel DAW por mouse).
+ * y lo que leen las manos → `Synth` (a través de `makeGestureApplier`, el mismo
+ * puente que usa el panel DAW por mouse):
+ *   - mano IZQUIERDA → acorde (grado + calidad) y mano DERECHA → voicing;
+ *   - altura de la mano DERECHA → volumen, y por encima del 70 % → distorsión.
  *
  * El render del vídeo va a ~60 fps (fluido); la detección de manos va limitada a
  * `DETECT_FPS` para no saturar la CPU/GPU.
  */
 const DETECT_FPS = 20;
 const MIN_INTERVAL_MS = 1000 / DETECT_FPS;
-const PERFORMANCE_VOLUME_DB = -6;
 
 const app = document.querySelector<HTMLDivElement>("#gesture-app")!;
 
@@ -36,19 +42,30 @@ const presets = new PresetSelector({
 // re-dispara). Mantiene el último acorde confirmado cuando se pierde la mano.
 const stabilize = makeChordStabilizer();
 
+// Última dinámica válida: se mantiene cuando la mano derecha sale de cuadro para
+// que el volumen no pegue un salto. Arranca en la altura neutra → 0 dB (el
+// preset suena tal cual se diseñó hasta que la mano derecha diga otra cosa).
+let lastDynamics: Dynamics = dynamicsFromHeight(NEUTRAL_HEIGHT);
+
 const view = new GestureView({
   leftControls: [presets.element],
+  getSound: () => synth.getCurrentTimbre(),
+  // Importar desde el menú ⚙: el popup pide nombre; se guarda como preset de
+  // usuario, aparece en el dropdown seleccionado y suena, sin recargar.
+  onImport: (preset, name) => presets.applyImported(preset, name),
   onActivate: async () => {
     await Promise.all([camera.start(), tracker.init(), synth.start()]);
     synth.setTimbre(presets.current);
     startLoop();
   },
-  onChord: (chord) => {
+  onPerform: ({ chord, rightHeight }) => {
     const stable = stabilize(chord);
     if (!stable) return;
+    if (rightHeight !== null) lastDynamics = dynamicsFromHeight(rightHeight);
     applyGesture({
       chord: stable.chord,
-      volumeDb: PERFORMANCE_VOLUME_DB,
+      volumeDb: lastDynamics.volumeDb,
+      drive: lastDynamics.drive,
       triggerActive: stable.triggerActive,
     });
   },
@@ -80,6 +97,9 @@ function startLoop(): void {
       // Frame intermedio: repinta el vídeo para que se vea fluido.
       view.paint(camera.video);
     }
+
+    // Aura audio-reactiva: cada frame, siga o no la detección.
+    view.setLevel(synth.getLevel());
   };
   requestAnimationFrame(tick);
 }

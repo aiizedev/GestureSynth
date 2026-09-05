@@ -55,6 +55,14 @@ export class Synth {
   private held = false;
   private ready = false;
 
+  /**
+   * El nodo de distorsión es uno solo, pero lo alimentan dos fuentes: el `drive`
+   * del preset (timbre) y el drive de PERFORMANCE (la mano derecha alta). Se
+   * guardan aparte y `applyDrive` los suma.
+   */
+  private presetDrive = 0;
+  private perfDrive = 0;
+
   /** Última configuración de timbre aplicada (fuente para `getCurrentTimbre`). */
   private currentPreset: TimbrePreset;
 
@@ -172,6 +180,21 @@ export class Synth {
     this.perfVol.volume.rampTo(db, 0.03);
   }
 
+  /**
+   * Drive/distorsión de PERFORMANCE, 0..1 (en `/gesture` lo mueve la altura de
+   * la mano derecha). Se SUMA al `drive` del preset; no lo pisa. Independiente
+   * de `setTimbre`.
+   */
+  setDrive(amount: number): void {
+    this.perfDrive = Math.max(0, Math.min(1, amount));
+    this.applyDrive();
+  }
+
+  /** Vuelca `presetDrive + perfDrive` (tope 1) al nodo de distorsión. */
+  private applyDrive(): void {
+    this.distortion.distortion = Math.min(1, this.presetDrive + this.perfDrive);
+  }
+
   noteOn(): void {
     if (!this.ready || this.current.length === 0) return;
     this.held = true;
@@ -228,7 +251,8 @@ export class Synth {
     }
 
     // --- Cadena de efectos (común a los dos motores) -----------------------
-    this.distortion.distortion = preset.drive;
+    this.presetDrive = preset.drive;
+    this.applyDrive();
     this.chorus.wet.rampTo(preset.fx.chorus, 0.1);
     this.delay.wet.rampTo(preset.fx.delay.wet, 0.1);
     this.delay.feedback.rampTo(preset.fx.delay.feedback, 0.1);

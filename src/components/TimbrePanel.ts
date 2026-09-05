@@ -17,6 +17,7 @@ import {
   type UserPreset,
 } from "../audio/presets/userStore";
 import { Knob } from "./Knob";
+import { SoundShare } from "./SoundShare";
 import { TimbreScope } from "./TimbreScope";
 
 const USER_VALUE_PREFIX = "user:";
@@ -91,13 +92,22 @@ export class TimbrePanel {
     this.element.setAttribute("aria-disabled", String(!enabled));
   }
 
+  /**
+   * Re-dibuja el visualizador con el timbre actual. `TimbreScope` lee el color
+   * de acento de `:root` en cada `render`, así que hay que llamar aquí cuando
+   * cambia el tema (el `<canvas>` no reacciona solo a las variables CSS).
+   */
+  refreshVisuals(): void {
+    this.scope.render(this.current);
+  }
+
   // --- Preset ------------------------------------------------------------
 
   private buildPresetField(): DocumentFragment {
     const frag = document.createDocumentFragment();
 
     const field = document.createElement("div");
-    field.className = "field";
+    field.className = "field preset-field";
     const label = document.createElement("label");
     label.textContent = "Preset";
     this.presetSelect = document.createElement("select");
@@ -133,7 +143,14 @@ export class TimbrePanel {
     this.deleteBtn.type = "button";
     this.deleteBtn.textContent = "Delete";
     this.deleteBtn.addEventListener("click", () => this.deleteCurrent());
-    saveRow.append(this.nameInput, saveBtn, this.deleteBtn);
+
+    // Compartir sonido: botones Exportar / Importar (el JSON sólo aparece en el
+    // popup de importar; incluye la ayuda para pedírselo a una IA).
+    const share = new SoundShare({
+      getSound: () => clonePreset(this.current),
+      onImport: (preset, name) => this.loadExternalPreset(preset, name),
+    });
+    saveRow.append(this.nameInput, saveBtn, this.deleteBtn, share.element);
 
     frag.append(field, saveRow);
     this.refreshPresetOptions();
@@ -196,6 +213,27 @@ export class TimbrePanel {
     this.syncMacros();
     this.syncAdvanced();
     this.pushTimbre();
+  }
+
+  /**
+   * Importa un sonido (pegado / subido / de una IA) con el nombre que puso el
+   * usuario en el popup: lo aplica en vivo y lo guarda como preset de usuario,
+   * dejándolo seleccionado en el dropdown. El nombre ya viene validado (no vacío,
+   * sin choque con los de fábrica).
+   */
+  private loadExternalPreset(preset: TimbrePreset, name: string): void {
+    this.current = migratePreset(clonePreset(preset));
+    this.refreshEngineUI();
+    this.syncMacros();
+    this.syncAdvanced();
+    this.pushTimbre();
+
+    this.userPresets = saveUserPreset(name, this.current);
+    this.currentUserName = name;
+    this.refreshPresetOptions();
+    this.presetSelect.value = USER_VALUE_PREFIX + name;
+    this.nameInput.value = name;
+    this.syncSaveRow();
   }
 
   /** Guarda el timbre actual como preset del usuario con el nombre del input. */
@@ -316,16 +354,20 @@ export class TimbrePanel {
   private buildAdvanced(): HTMLDetailsElement {
     const details = document.createElement("details");
     details.className = "advanced";
+    details.open = true;
     const summary = document.createElement("summary");
-    summary.textContent = "Advanced";
+    summary.textContent = "Advanced — potenciómetros del sintetizador";
     details.append(summary);
 
-    details.append(
+    const grid = document.createElement("div");
+    grid.className = "adv-grid";
+    grid.append(
       this.buildOscSection(),
       this.buildFilterSection(),
       this.buildAmpEnvSection(),
       this.buildFxSection(),
     );
+    details.append(grid);
     return details;
   }
 

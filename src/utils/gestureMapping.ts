@@ -31,6 +31,13 @@ export interface GestureState {
   volumeDb: number;
   /** note on / note off (mantener pad pulsado; luego: gesto de pinza). */
   triggerActive: boolean;
+  /**
+   * Drive/distorsión expresiva 0..1 que se SUMA al `drive` del preset (en
+   * `/gesture` lo mueve la altura de la mano derecha). Opcional: las fuentes que
+   * no lo controlan (el panel DAW por mouse) lo omiten y el drive queda en el
+   * del preset.
+   */
+  drive?: number;
 }
 
 function chordChanged(a: ChordIntent, b: ChordIntent): boolean {
@@ -60,6 +67,9 @@ export function makeGestureApplier(
     }
     if (!prev || prev.volumeDb !== state.volumeDb) {
       synth.setVolume(state.volumeDb);
+    }
+    if (!prev || (prev.drive ?? 0) !== (state.drive ?? 0)) {
+      synth.setDrive(state.drive ?? 0);
     }
     if (state.triggerActive && !prev?.triggerActive) {
       synth.noteOn();

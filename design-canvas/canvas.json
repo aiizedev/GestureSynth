@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1200, "h": 1400, "title": "Estación de sonido — /" },
+    { "file": "Motion.dc.html", "x": 1320, "y": 0, "w": 1000, "h": 820, "title": "Sistema de movimiento" }
+  ],
+  "annotations": [
+    { "id": "dir-principal", "x": 0, "y": -120, "w": 560, "text": "Rediseño de / — editorial en modo oscuro. El acento sale de la paleta pastel de /gesture y se elige desde «Tema» en la cabecera (prueba el tweak de color arriba). Advanced es una rejilla visible de potenciómetros con aguja (Oscillator / Filter / Envelope / Effects); el número va debajo, pequeño, como referencia." },
+    { "id": "motion-note", "x": 1320, "y": -96, "w": 320, "text": "Movimiento contenido: el nivel real mueve el medidor y una hairline bajo la cabecera; el resto entra de golpe." }
+  ],
+  "launch": { "view": "canvas" }
+}
