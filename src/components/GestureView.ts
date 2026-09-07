@@ -21,7 +21,7 @@ import {
 } from "../tracking/handPose";
 import type { TimbrePreset } from "../audio/presets/types";
 import type { ChordIntent } from "../utils/gestureMapping";
-import { describeChord, DEGREE_LABELS } from "../utils/musicTheory";
+import { describeChord, DEGREE_LABELS, type KeyMode } from "../utils/musicTheory";
 import { GestureOptions } from "./GestureOptions";
 import { HandOverlayCanvas } from "./HandOverlayCanvas";
 import { KeySelector } from "./KeySelector";
@@ -106,6 +106,7 @@ export class GestureView {
   private lastLevelTs = 0;
 
   private chordKey = "C";
+  private chordKeyMode: KeyMode = "major";
   private readonly onPerform?: (frame: PerformFrame) => void;
 
   constructor(opts: GestureViewOptions) {
@@ -137,8 +138,10 @@ export class GestureView {
 
     const keys = new KeySelector({
       key: this.chordKey,
-      onChange: (k) => {
-        this.chordKey = k;
+      keyMode: this.chordKeyMode,
+      onChange: ({ key, keyMode }) => {
+        this.chordKey = key;
+        this.chordKeyMode = keyMode;
         this.updateChord(this.latest);
       },
     });
@@ -240,7 +243,7 @@ export class GestureView {
    */
   private updateChord(frame: HandsFrame | null): void {
     const { left, right } = assignHands(frame?.hands ?? []);
-    const intent = readChordIntent(left, right, this.chordKey, "major");
+    const intent = readChordIntent(left, right, this.chordKey, this.chordKeyMode);
     const rawVoicing = right ? readVoicing(right) : null;
     this.onPerform?.({
       chord: intent,
