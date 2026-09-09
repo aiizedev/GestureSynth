@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GestureSynth — arquitectura",
+    "quality_profile": "showcase",
+    "viewBox": [1390, 800]
+  },
+  "components": [
+    { "id": "daw", "type": "frontend", "label": "Panel de pads", "sublabel": "raton", "pos": [40, 320], "size": [165, 60] },
+    { "id": "theory", "type": "backend", "label": "musicTheory", "sublabel": "grado + voicing -> Hz", "pos": [795, 175], "size": [150, 60] },
+    { "id": "bridge", "type": "backend", "label": "makeGestureApplier", "sublabel": "utils/ · GestureState", "pos": [790, 320], "size": [160, 60], "tag": "unico puente" },
+    { "id": "synth", "type": "backend", "label": "Synth", "sublabel": "Tone.js PolySynth + FX", "pos": [1030, 320], "size": [150, 60], "tag": "unico con tone" },
+    { "id": "audio", "type": "external", "label": "Web Audio", "sublabel": "salida", "pos": [1260, 321], "size": [110, 58] },
+    { "id": "cam", "type": "frontend", "label": "Camara", "sublabel": "/gesture", "pos": [40, 490], "size": [165, 60] },
+    { "id": "mediapipe", "type": "external", "label": "MediaPipe", "sublabel": "HandLandmarker (GPU)", "pos": [280, 490], "size": [160, 60], "tag": "unico con tasks-vision" },
+    { "id": "tracking", "type": "backend", "label": "tracking/", "sublabel": "puro · dedos -> ChordIntent", "pos": [530, 490], "size": [190, 60] },
+    { "id": "store", "type": "backend", "label": "userStore · presetSync", "sublabel": "localStorage <-> nube", "pos": [40, 620], "size": [180, 58] },
+    { "id": "supabase", "type": "cloud", "label": "Supabase", "sublabel": "Auth Google + tabla presets", "pos": [330, 620], "size": [200, 60], "tag": "RLS + Realtime" }
+  ],
+  "connections": [
+    { "id": "daw-bridge", "from": "daw", "to": "bridge", "label": "GestureState" },
+    { "id": "cam-mp", "from": "cam", "to": "mediapipe", "label": "video" },
+    { "id": "mp-tracking", "from": "mediapipe", "to": "tracking", "label": "HandsFrame" },
+    { "id": "tracking-bridge", "from": "tracking", "to": "bridge", "label": "ChordIntent", "variant": "emphasis" },
+    { "id": "bridge-theory", "from": "bridge", "to": "theory", "label": "grado + voicing" },
+    { "id": "bridge-synth", "from": "bridge", "to": "synth", "label": "API opaca", "variant": "emphasis" },
+    { "id": "synth-audio", "from": "synth", "to": "audio" },
+    { "id": "cam-store", "from": "cam", "to": "store", "label": "presets", "fromSide": "bottom", "toSide": "top" },
+    { "id": "store-supabase", "from": "store", "to": "supabase", "label": "sync con sesion", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Dos formas de tocar", "items": ["Panel de pads con el raton en /", "Manos por camara en /gesture", "Las dos entran por el mismo makeGestureApplier"] },
+    { "dot": "emerald", "title": "Regla de aislamiento", "items": ["tracking/ y audio/ no se conocen", "Solo Synth.ts importa Tone.js", "Solo HandLandmarker.ts importa MediaPipe", "tracking/ = handModel · handPose · handChord · chordStabilizer (puros)"] },
+    { "dot": "violet", "title": "Cuenta opcional", "items": ["Login Google -> sesion (PKCE)", "presetSync fusiona local <-> nube", "El panel de / y /gesture comparten userStore"] }
+  ]
+}

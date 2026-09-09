@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "GestureSynth — pipeline de manos (/gesture)",
+    "quality_profile": "showcase",
+    "viewBox": [920, 560]
+  },
+  "stages": [
+    { "label": "Captura" },
+    { "label": "Manos" },
+    { "label": "Acorde" },
+    { "label": "Sonido" }
+  ],
+  "nodes": [
+    { "id": "cam", "type": "frontend", "label": "Camara", "sublabel": "webcam", "stage": 0, "row": 0, "width": 150 },
+    { "id": "mediapipe", "type": "external", "label": "HandLandmarker", "sublabel": "MediaPipe", "stage": 1, "row": 1, "width": 168, "tag": "numHands 2" },
+    { "id": "pose", "type": "backend", "label": "handPose", "sublabel": "dedos + tilt", "stage": 1, "row": 2, "width": 160 },
+    { "id": "chord", "type": "backend", "label": "readChordIntent", "sublabel": "handChord", "stage": 2, "row": 0, "width": 168 },
+    { "id": "stab", "type": "backend", "label": "chordStabilizer", "sublabel": "histeresis", "stage": 2, "row": 1, "width": 168 },
+    { "id": "applier", "type": "backend", "label": "makeGestureApplier", "sublabel": "el puente", "stage": 3, "row": 0, "width": 178 },
+    { "id": "synth", "type": "backend", "label": "Synth", "sublabel": "-> Web Audio", "stage": 3, "row": 1, "width": 160 }
+  ],
+  "flows": [
+    { "id": "cam-mp", "from": "cam", "to": "mediapipe", "label": "video" },
+    { "id": "mp-pose", "from": "mediapipe", "to": "pose", "label": "HandsFrame", "labelDy": 24 },
+    { "id": "pose-chord", "from": "pose", "to": "chord", "label": "gestos" },
+    { "id": "chord-stab", "from": "chord", "to": "stab", "label": "ChordIntent", "labelDy": 24 },
+    { "id": "stab-applier", "from": "stab", "to": "applier", "label": "acorde estable" },
+    { "id": "applier-synth", "from": "applier", "to": "synth", "label": "setChord", "labelDy": 24 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Un solo camino", "items": ["Camara -> MediaPipe -> handPose -> acorde -> sintesis", "El panel de raton llega al mismo makeGestureApplier via PanelPerformanceSource (ver el diagrama de arquitectura)"] },
+    { "dot": "emerald", "title": "Render vs deteccion", "items": ["El video se repinta a ~60 fps", "La deteccion va limitada a DETECT_FPS = 20", "Subirlo baja la latencia y sube el coste"] },
+    { "dot": "violet", "title": "Lectura de manos", "items": ["Izquierda: nº de dedos -> grado; inclinacion -> mayor/menor", "Derecha: dedos -> voicing 1-8; pulgar -> inversion", "chordStabilizer mata los grados intermedios de una transicion"] }
+  ]
+}

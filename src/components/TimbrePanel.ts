@@ -14,8 +14,10 @@ import {
   getUserPreset,
   listUserPresets,
   saveUserPreset,
-  type UserPreset,
+  STORAGE_KEY,
+  USER_PRESETS_EVENT,
 } from "../audio/presets/userStore";
+import { isAuthConfigured, onAuthChange } from "../auth/auth";
 import { Knob } from "./Knob";
 import { SoundShare } from "./SoundShare";
 import { TimbreScope } from "./TimbreScope";
@@ -60,12 +62,19 @@ export class TimbrePanel {
   private oscFmWrap!: HTMLDivElement;
   private filterSection!: HTMLElement;
 
-  /** Presets del usuario (localStorage) + selección activa si es uno de ellos. */
-  private userPresets: UserPreset[] = listUserPresets();
+  /** Nombre del preset de usuario activo (si la selección es uno de ellos). */
   private currentUserName: string | null = null;
   private presetSelect!: HTMLSelectElement;
   private nameInput!: HTMLInputElement;
   private deleteBtn!: HTMLButtonElement;
+  private cloudNote!: HTMLSpanElement;
+
+  /** Refresca el dropdown cuando el almacén cambia (guardado local o merge de la nube). */
+  private readonly refreshFromStore = (): void => this.refreshPresetOptions();
+  private readonly onStorage = (e: StorageEvent): void => {
+    if (e.key === null || e.key === STORAGE_KEY) this.refreshPresetOptions();
+  };
+  private unsubAuth: () => void = () => {};
 
   constructor(private readonly synth: Synth) {
     this.current = migratePreset(clonePreset(PRESETS[PRESET_NAMES[0]]));
@@ -86,10 +95,25 @@ export class TimbrePanel {
     );
 
     this.loadPreset(PRESET_NAMES[0]);
+
+    // Reacciona a cambios del almacén (guardado en otra pestaña, o merge desde
+    // la nube al iniciar sesión) sin recargar. Y a la sesión, para la nota nube.
+    window.addEventListener(USER_PRESETS_EVENT, this.refreshFromStore);
+    window.addEventListener("storage", this.onStorage);
+    this.unsubAuth = onAuthChange((session) =>
+      this.updateCloudNote(session != null),
+    );
   }
 
   setEnabled(enabled: boolean): void {
     this.element.setAttribute("aria-disabled", String(!enabled));
+  }
+
+  /** Quita los listeners (para tests; en la app el panel vive toda la página). */
+  dispose(): void {
+    window.removeEventListener(USER_PRESETS_EVENT, this.refreshFromStore);
+    window.removeEventListener("storage", this.onStorage);
+    this.unsubAuth();
   }
 
   /**
@@ -152,14 +176,31 @@ export class TimbrePanel {
     });
     saveRow.append(this.nameInput, saveBtn, this.deleteBtn, share.element);
 
-    frag.append(field, saveRow);
+    // Nota nube: sin sesión, estos presets viven solo en este navegador.
+    this.cloudNote = document.createElement("span");
+    this.cloudNote.className = "preset-cloud-note";
+    this.cloudNote.textContent =
+      "Estos presets se guardan solo en este navegador. Entra con tu cuenta para tenerlos en cualquier dispositivo.";
+    this.cloudNote.hidden = !isAuthConfigured;
+
+    frag.append(field, saveRow, this.cloudNote);
     this.refreshPresetOptions();
     return frag;
   }
 
-  /** Reconstruye las `<option>` del dropdown: fábrica + "My presets". */
+  /** Muestra la nota nube solo si hay cuenta configurada y NO hay sesión. */
+  private updateCloudNote(hasSession: boolean): void {
+    this.cloudNote.hidden = !isAuthConfigured || hasSession;
+  }
+
+  /**
+   * Reconstruye las `<option>` del dropdown: fábrica + "My presets". Lee el
+   * almacén fresco (`listUserPresets()`) y conserva la selección si sigue
+   * existiendo, para poder llamarse desde un evento sin perder el preset activo.
+   */
   private refreshPresetOptions(): void {
     const select = this.presetSelect;
+    const prev = select.value;
     select.textContent = "";
     for (const group of PRESET_GROUPS) {
       const og = document.createElement("optgroup");
@@ -172,16 +213,20 @@ export class TimbrePanel {
       }
       select.append(og);
     }
-    if (this.userPresets.length > 0) {
+    const users = listUserPresets();
+    if (users.length > 0) {
       const og = document.createElement("optgroup");
       og.label = "My presets";
-      for (const { name } of this.userPresets) {
+      for (const { name } of users) {
         const opt = document.createElement("option");
         opt.value = USER_VALUE_PREFIX + name;
         opt.textContent = name;
         og.append(opt);
       }
       select.append(og);
+    }
+    if (prev && [...select.options].some((o) => o.value === prev)) {
+      select.value = prev;
     }
   }
 
@@ -228,7 +273,7 @@ export class TimbrePanel {
     this.syncAdvanced();
     this.pushTimbre();
 
-    this.userPresets = saveUserPreset(name, this.current);
+    saveUserPreset(name, this.current);
     this.currentUserName = name;
     this.refreshPresetOptions();
     this.presetSelect.value = USER_VALUE_PREFIX + name;
@@ -249,7 +294,7 @@ export class TimbrePanel {
       this.nameInput.focus();
       return;
     }
-    this.userPresets = saveUserPreset(name, this.current);
+    saveUserPreset(name, this.current);
     this.currentUserName = name;
     this.refreshPresetOptions();
     this.presetSelect.value = USER_VALUE_PREFIX + name;
@@ -258,7 +303,7 @@ export class TimbrePanel {
 
   private deleteCurrent(): void {
     if (!this.currentUserName) return;
-    this.userPresets = deleteUserPreset(this.currentUserName);
+    deleteUserPreset(this.currentUserName);
     this.refreshPresetOptions();
     this.loadPreset(PRESET_NAMES[0]);
   }

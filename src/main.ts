@@ -9,6 +9,8 @@ import { TimbrePanel } from "./components/TimbrePanel";
 import { ChordHud } from "./components/ChordHud";
 import { ThemePicker } from "./components/ThemePicker";
 import { SiteTour } from "./components/SiteTour";
+import { AccountButton } from "./components/AccountButton";
+import { initPresetSync } from "./auth/presetSync";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -18,6 +20,10 @@ const source = new PanelPerformanceSource();
 
 // La ÚNICA pieza que puentea tracking ↔ audio. No cambia al conectar la cámara.
 source.subscribe(makeGestureApplier(synth));
+
+// Con sesión iniciada, sincroniza los presets de usuario con la nube (merge al
+// entrar + escrituras y Realtime). Sin sesión no hace nada.
+initPresetSync();
 
 // Tour guiado de la interfaz (botón "¿Cómo funciona?" + auto-abre la 1ª visita).
 const tour = new SiteTour();
@@ -47,12 +53,23 @@ tourBtn.addEventListener("click", () => {
   stopTourPulse();
   tour.start();
 });
+const aboutLink = document.createElement("a");
+aboutLink.className = "about-link";
+aboutLink.href = "/about";
+aboutLink.textContent = "Qué es esto";
 // El `<canvas>` del visualizador no reacciona solo a `--accent`: al cambiar de
 // tema (aquí o desde otra pestaña con `/gesture`) hay que repintarlo.
 const themePicker = new ThemePicker(() => timbrePanel.refreshVisuals());
-headActions.append(letsPlay, tourBtn, themePicker.element);
+headActions.append(letsPlay, tourBtn, aboutLink, themePicker.element);
 
-header.append(title, headActions);
+// Cuenta (opcional): entrar con Google para llevarte tus presets a la nube.
+// Va bajo el título, a la izquierda, para alinearla visualmente con "Tema".
+const account = new AccountButton("full");
+const brand = document.createElement("div");
+brand.className = "head-brand";
+brand.append(title, account.element);
+
+header.append(brand, headActions);
 
 // --- UI --------------------------------------------------------------------
 const chordDeck = new ChordDeck(source);

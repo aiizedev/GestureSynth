@@ -161,7 +161,11 @@ export class GestureView {
     create.className = "gesture-create";
     create.href = "/";
     create.textContent = "crear sonidos ↗";
-    leftPanel.append(create);
+    const aboutLink = document.createElement("a");
+    aboutLink.className = "gesture-create";
+    aboutLink.href = "/about";
+    aboutLink.textContent = "qué es esto ↗";
+    leftPanel.append(create, aboutLink);
 
     this.startOverlay = document.createElement("div");
     this.startOverlay.className = "gesture-start";

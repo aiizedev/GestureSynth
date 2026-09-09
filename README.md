@@ -31,6 +31,12 @@ suena**: el acorde que leen las manos entra al mismo `Synth` por el puente
 - **Timbre editable en caliente**, con presets serializables (JSON) y un motor
   sustractivo o FM según el preset.
 
+La página **`/about`** (3ª entrada de la MPA, `about.html` → `src/about.ts`)
+resume qué es / qué hace / cómo lo hace, y enlaza a dos diagramas interactivos
+generados con [archify](https://github.com/tt-a1i/archify) —
+`public/diagrams/{arquitectura,pipeline-manos}.html`, con sus fuentes en
+`docs/diagrams/*.json`.
+
 ---
 
 ## Demo rápida
@@ -63,30 +69,9 @@ Regla **no negociable**: `tracking/` y `audio/` no se conocen entre sí. El úni
 puente es `utils/gestureMapping.ts`; **solo `audio/Synth.ts` importa `tone`** y
 **solo `tracking/HandLandmarker.ts` importa `@mediapipe/tasks-vision`**.
 
-```mermaid
-flowchart LR
-    subgraph tracking["tracking/ — fuente de gestos"]
-        PPS["PanelPerformanceSource<br/><i>panel DAW · mouse</i>"]
-        HL["HandLandmarkerSource<br/><i>MediaPipe · /gesture</i><br/><b>único que importa tasks-vision</b>"]
-        HC["handChord<br/><i>2 manos → ChordIntent</i>"]
-    end
-    subgraph utils["utils/ — único puente"]
-        GM["gestureMapping<br/>GestureState + makeGestureApplier"]
-        MT["musicTheory<br/>grado + voicing → frecuencias"]
-    end
-    subgraph audio["audio/ — síntesis"]
-        SY["Synth<br/><i>PolySynth + cadena FX</i><br/><b>único que importa tone</b>"]
-    end
-    UI["components/<br/>ChordDeck · TimbrePanel · GestureView · …"]
+![Arquitectura de GestureSynth](docs/diagrams/arquitectura.png)
 
-    UI -- "acorde / trigger / volumen" --> PPS
-    UI -- "setTimbre(preset)" --> SY
-    PPS -- "GestureState" --> GM
-    HL -- "HandsFrame" --> HC
-    HC -- "GestureState (vía GestureView)" --> GM
-    GM --> MT
-    GM -- "API opaca" --> SY
-```
+<sub>Diagrama interactivo (pan/zoom, tema, trazado): [`/about`](https://soundstation-motion.vercel.app/about) · fuente `public/diagrams/arquitectura.html` (spec en `docs/diagrams/arquitectura.architecture.json`, hecho con [archify](https://github.com/tt-a1i/archify)).</sub>
 
 `HandLandmarkerSource` (`/gesture`) captura 21 landmarks + lado por mano;
 `handChord.readChordIntent` los convierte en `ChordIntent` y `src/gesture.ts` lo
@@ -221,6 +206,10 @@ principal de la página (`--gesture-accent`, aplicado a todo el texto) y
 *información avanzada* (muestra el HUD de identificación de manos, oculto por
 defecto). Las preferencias del ⚙ se guardan en `localStorage`.
 `<body data-page="gesture">` activa este layout sin afectar a `/`.
+
+![Pipeline de manos de /gesture](docs/diagrams/pipeline-manos.png)
+
+<sub>Cámara → MediaPipe → `handPose` → `readChordIntent` → `chordStabilizer` → `makeGestureApplier` → `Synth`. Interactivo en [`/about`](https://soundstation-motion.vercel.app/about) · `public/diagrams/pipeline-manos.html`.</sub>
 
 Qué hace hoy — **leer el acorde de las dos manos y sonarlo**:
 

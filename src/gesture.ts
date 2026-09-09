@@ -4,6 +4,8 @@ import { CameraFeed } from "./tracking/CameraFeed";
 import { HandLandmarkerSource } from "./tracking/HandLandmarker";
 import { GestureView } from "./components/GestureView";
 import { PresetSelector } from "./components/PresetSelector";
+import { AccountButton } from "./components/AccountButton";
+import { initPresetSync } from "./auth/presetSync";
 import { makeGestureApplier } from "./utils/gestureMapping";
 import { makeChordStabilizer } from "./tracking/chordStabilizer";
 import {
@@ -36,6 +38,12 @@ const presets = new PresetSelector({
   onChange: (preset) => synth.setTimbre(preset),
 });
 
+// Cuenta (opcional): misma sesión que en `/`, para guardar presets en la nube.
+const account = new AccountButton("compact");
+
+// Con sesión, sincroniza los presets de usuario con la nube (sin sesión, no-op).
+initPresetSync();
+
 // Filtro temporal entre la lectura cruda de las manos y el `Synth`: confirma un
 // acorde nuevo solo tras varios frames iguales (mata los grados intermedios de
 // una transición) y da histéresis al note on/off (un frame suelto sin mano no
@@ -48,7 +56,7 @@ const stabilize = makeChordStabilizer();
 let lastDynamics: Dynamics = dynamicsFromHeight(NEUTRAL_HEIGHT);
 
 const view = new GestureView({
-  leftControls: [presets.element],
+  leftControls: [presets.element, account.element],
   getSound: () => synth.getCurrentTimbre(),
   // Importar desde el menú ⚙: el popup pide nombre; se guarda como preset de
   // usuario, aparece en el dropdown seleccionado y suena, sin recargar.
@@ -108,4 +116,5 @@ window.addEventListener("beforeunload", () => {
   running = false;
   tracker.dispose();
   camera.stop();
+  account.dispose();
 });

@@ -8,9 +8,18 @@ dist
 dist-ssr
 *.local
 
+# Variables de entorno. `.env.local` ya lo cubre `*.local`; esto ignora el resto
+# pero conserva la plantilla versionada.
+.env
+.env.*
+!.env.example
+
 # Assets de MediaPipe: se obtienen con `npm run setup:mediapipe` (postinstall).
 # ~42 MB de wasm + ~7 MB de modelo, no van al repo.
 public/mediapipe/
+
+# Evidencia de `archify visual-check` (no se despliega).
+public/diagrams/*.visual-check.*
 
 # Editor directories and files
 .vscode/*
