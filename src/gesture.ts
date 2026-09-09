@@ -35,6 +35,7 @@ const synth = new Synth();
 const applyGesture = makeGestureApplier(synth);
 
 const presets = new PresetSelector({
+  initial: "omakase",
   onChange: (preset) => synth.setTimbre(preset),
 });
 

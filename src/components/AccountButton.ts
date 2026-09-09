@@ -74,6 +74,9 @@ export class AccountButton {
   private render(): void {
     this.element.replaceChildren();
     this.element.removeAttribute("title");
+    // Estado expuesto al CSS (p. ej. `/gesture` apila "crear sonidos" debajo
+    // del botón de login cuando no hay sesión).
+    this.element.dataset.state = this.state;
 
     if (this.state === "loading") {
       const dots = document.createElement("span");

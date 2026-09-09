@@ -1671,6 +1671,14 @@ body[data-page="gesture"] {
   margin-top: 6px;
 }
 
+/* Sin sesión: "crear sonidos" va debajo de "Entrar con Google", no a su lado
+   (el botón + su explicación ocupan demasiado ancho para compartir fila). */
+.gesture-foot:has(.account[data-state="out"]) {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .gesture-create:hover {
   opacity: 1;
   text-decoration: underline;
