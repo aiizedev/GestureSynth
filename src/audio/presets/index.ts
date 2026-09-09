@@ -4,24 +4,17 @@ import keys from "./keys.json";
 import pad from "./pad.json";
 import pluck from "./pluck.json";
 import brass from "./brass.json";
-import gritty from "./gritty.json";
-import epiano from "./epiano.json";
-import bells from "./bells.json";
 import hazypad from "./hazypad.json";
-import slowdance from "./slowdance.json";
 import ballad from "./ballad.json";
 import synthpad from "./synthpad.json";
 import synthpadthin from "./synthpadthin.json";
 import crystalair from "./crystalair.json";
-import rhodes from "./rhodes.json";
-import coldbells from "./coldbells.json";
-import feltkeys from "./feltkeys.json";
-import darkwash from "./darkwash.json";
 import warmsynth from "./warmsynth.json";
 import brightsynth from "./brightsynth.json";
 import retrosynth from "./retrosynth.json";
-import warmdance from "./warmdance.json";
-import darkbed from "./darkbed.json";
+import softpad from "./softpad.json";
+import omakase from "./omakase.json";
+import overdrive from "./overdrive.json";
 
 export type PresetName =
   | "clean"
@@ -29,86 +22,65 @@ export type PresetName =
   | "pad"
   | "pluck"
   | "brass"
-  | "gritty"
-  | "epiano"
-  | "bells"
-  | "hazypad"
-  | "slowdance"
   | "ballad"
   | "synthpad"
   | "synthpadthin"
   | "crystalair"
-  | "rhodes"
-  | "coldbells"
-  | "feltkeys"
-  | "darkwash"
-  | "warmdance"
-  | "darkbed"
+  | "hazypad"
   | "warmsynth"
   | "brightsynth"
-  | "retrosynth";
+  | "retrosynth"
+  | "softpad"
+  | "omakase"
+  | "overdrive";
 
 /** Presets agrupados para el `<optgroup>` del dropdown. */
 export const PRESET_GROUPS: Array<{ label: string; names: PresetName[] }> = [
   {
     label: "Basic",
-    names: ["clean", "keys", "pad", "pluck", "brass", "gritty", "epiano", "bells"],
+    names: ["clean", "keys", "pad", "pluck", "brass"],
   },
   {
-    // Inspirados en Joji (Ballads 1 / Nectar / Smithereens): pads detuneados,
-    // Rhodes filtrado, campanas FM frías, reverbs enormes.
-    label: "Joji / ballad",
-    names: [
-      "ballad",
-      "synthpad",
-      "synthpadthin",
-      "crystalair",
-      "hazypad",
-      "slowdance",
-      "rhodes",
-      "coldbells",
-      "feltkeys",
-      "darkwash",
-      "warmdance",
-      "darkbed",
-    ],
+    // Pads oscuros y atmosféricos inspirados en Joji (Ballads 1 / Nectar):
+    // saws detuneados, reverbs enormes, el acorde de fondo.
+    label: "Dark Synths",
+    names: ["ballad", "synthpad", "synthpadthin", "crystalair", "hazypad"],
   },
   {
-    // Recreación del synth de referencia (ericwei97-cloud/gesture-synth):
-    // un solo oscilador → pasa-bajos estático 1200 Hz / Q 0.7, sin FX. El
-    // preset es la forma de onda: triangle / sawtooth / square.
-    label: "Inspiration · gesture-synth",
+    // Recreación del synth de referencia de Eric Wei
+    // (github.com/ericwei97-cloud/gesture-synth) — la idea original de tocar
+    // acordes con las manos por cámara: un oscilador → pasa-bajos estático
+    // 1200 Hz / Q 0.7, sin FX. El preset es la forma de onda.
+    label: "Inspiration — Eric Wei",
     names: ["warmsynth", "brightsynth", "retrosynth"],
+  },
+  {
+    // Pads del usuario.
+    label: "Pads",
+    names: ["softpad", "omakase", "overdrive"],
   },
 ];
 
 export const PRESET_NAMES: PresetName[] = PRESET_GROUPS.flatMap((g) => g.names);
 
-/** Nombre visible en el dropdown (el público no ve "epiano"). */
+/** Nombre visible en el dropdown. */
 export const PRESET_LABELS: Record<PresetName, string> = {
   clean: "Clean",
   keys: "Keys",
   pad: "Warm Pad",
   pluck: "Pluck",
   brass: "Brass",
-  gritty: "Gritty",
-  epiano: "E-Piano",
-  bells: "Bells",
   ballad: "Ballad Lead",
-  synthpad: "Synth Pad",
-  synthpadthin: "Synth Pad Thin",
+  synthpad: "Midnight Pad",
+  synthpadthin: "Midnight Pad Thin",
   crystalair: "Crystal Air",
   hazypad: "Hazy Pad",
-  slowdance: "Slow Dance",
-  rhodes: "Mellow Rhodes",
-  coldbells: "Cold Bells",
-  feltkeys: "Felt Keys",
-  darkwash: "Dark Wash",
-  warmdance: "Warm Dance",
-  darkbed: "Dark Bed",
   warmsynth: "Warm Synth",
   brightsynth: "Bright Synth",
   retrosynth: "Retro Synth",
+  softpad: "SynthPad",
+  omakase: "OMAKASE",
+  overdrive: "Overdrive",
 };
 
 export const PRESETS: Record<PresetName, TimbrePreset> = {
@@ -117,24 +89,17 @@ export const PRESETS: Record<PresetName, TimbrePreset> = {
   pad: pad as TimbrePreset,
   pluck: pluck as TimbrePreset,
   brass: brass as TimbrePreset,
-  gritty: gritty as TimbrePreset,
-  epiano: epiano as TimbrePreset,
-  bells: bells as TimbrePreset,
-  hazypad: hazypad as TimbrePreset,
-  slowdance: slowdance as TimbrePreset,
   ballad: ballad as TimbrePreset,
   synthpad: synthpad as TimbrePreset,
   synthpadthin: synthpadthin as TimbrePreset,
   crystalair: crystalair as TimbrePreset,
-  rhodes: rhodes as TimbrePreset,
-  coldbells: coldbells as TimbrePreset,
-  feltkeys: feltkeys as TimbrePreset,
-  darkwash: darkwash as TimbrePreset,
-  warmdance: warmdance as TimbrePreset,
-  darkbed: darkbed as TimbrePreset,
+  hazypad: hazypad as TimbrePreset,
   warmsynth: warmsynth as TimbrePreset,
   brightsynth: brightsynth as TimbrePreset,
   retrosynth: retrosynth as TimbrePreset,
+  softpad: softpad as TimbrePreset,
+  omakase: omakase as TimbrePreset,
+  overdrive: overdrive as TimbrePreset,
 };
 
 /** Preset base — rellena huecos al migrar y es el punto de partida seguro. */

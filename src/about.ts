@@ -60,6 +60,11 @@ section(
     El timbre se edita en caliente, con un motor sustractivo o de FM según el
     preset, y se guarda como JSON.
   </p>
+  <p>
+    La idea de tocar acordes moviendo las manos frente a la cámara es de
+    <b>Eric Wei</b> (<code>gesture-synth</code>); uno de los grupos de presets
+    —«Inspiration — Eric Wei»— recrea el synth de su proyecto como homenaje.
+  </p>
 `,
 );
 
@@ -86,7 +91,8 @@ section(
     </dd>
     <dt>Timbre</dt>
     <dd>
-      23 presets de fábrica en tres grupos, más los que guardes. Cuatro macros
+      16 presets de fábrica en cuatro grupos (Basic, Dark Synths, Inspiration —
+      Eric Wei y Pads), más los que guardes. Cuatro macros
       (Brightness, Thickness, Space, Motion) y un bloque avanzado con todos los
       potenciómetros.
     </dd>
@@ -171,6 +177,26 @@ section(
     <dd>La interfaz: pads, panel de timbre, vista de cámara, tour, cuenta…</dd>
     <dt><code>auth/</code></dt>
     <dd>Login con Supabase y la sincronización de presets con la nube.</dd>
+  </dl>
+`,
+);
+
+section(
+  "Agradecimientos",
+  `
+  <p>
+    La idea original de tocar acordes moviendo las manos frente a la cámara es de
+    <b>Eric Wei</b> (<code>gesture-synth</code>); el grupo de presets
+    «Inspiration — Eric Wei» recrea el synth de su proyecto como homenaje.
+  </p>
+  <p>
+    Las revisiones de los conceptos musicales (grados, voicings, nomenclatura por
+    círculo de quintas, tonalidades mayores y menores) se hicieron con alumnos del
+    programa de <b>Licenciatura en Música del Conservatorio del Tolima</b>:
+  </p>
+  <dl class="about-dl">
+    <dt>Santiago Alejandro Inchima Manrique</dt>
+    <dd><code>1720221062@conservatoriodeltolima.edu.co</code></dd>
   </dl>
 `,
 );

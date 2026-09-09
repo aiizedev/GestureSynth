@@ -1663,6 +1663,14 @@ body[data-page="gesture"] {
   padding: 3px 4px;
 }
 
+/* Última fila: foto de perfil + "crear sonidos", uno al lado del otro. */
+.gesture-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
 .gesture-create:hover {
   opacity: 1;
   text-decoration: underline;

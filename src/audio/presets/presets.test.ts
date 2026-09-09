@@ -39,10 +39,15 @@ describe("presets de fábrica", () => {
     for (const name of PRESET_NAMES) assertValid(PRESETS[name]);
   });
 
-  it("hay al menos un preset FM y uno sustractivo", () => {
-    const engines = PRESET_NAMES.map((n) => PRESETS[n].engine);
-    expect(engines).toContain("fm");
-    expect(engines).toContain("subtractive");
+  it("todos los presets de fábrica son sustractivos; el motor FM sigue soportado vía migratePreset", () => {
+    for (const n of PRESET_NAMES) expect(PRESETS[n].engine).toBe("subtractive");
+    const fm = migratePreset({
+      version: 2,
+      engine: "fm",
+      fm: { harmonicity: 3, modulationIndex: 8, modWaveform: "sine" },
+    });
+    expect(fm.engine).toBe("fm");
+    expect(fm.fm).toBeDefined();
   });
 
   it("los grupos cubren exactamente todos los presets, sin repetidos", () => {
@@ -50,18 +55,40 @@ describe("presets de fábrica", () => {
     expect([...grouped].sort()).toEqual([...PRESET_NAMES].sort());
     expect(new Set(grouped).size).toBe(grouped.length);
     for (const name of PRESET_NAMES) expect(PRESET_LABELS[name]).toBeTruthy();
+    expect(PRESET_GROUPS.map((g) => g.label)).toEqual([
+      "Basic",
+      "Dark Synths",
+      "Inspiration — Eric Wei",
+      "Pads",
+    ]);
   });
 
-  it("el banco Joji incluye el lead tipo 'Die For You' y una campana FM", () => {
-    const joji = PRESET_GROUPS.find((g) => g.label.includes("Joji"))!;
-    expect(joji.names).toContain("ballad");
-    expect(joji.names.some((n) => PRESETS[n].engine === "fm")).toBe(true);
+  it("el banco Dark Synths incluye el lead 'Ballad' y los synth pads", () => {
+    const bank = PRESET_GROUPS.find((g) => g.label === "Dark Synths")!;
+    expect(bank.names).toEqual([
+      "ballad",
+      "synthpad",
+      "synthpadthin",
+      "crystalair",
+      "hazypad",
+    ]);
     assertValid(PRESETS.ballad);
-    assertValid(PRESETS.coldbells);
+    assertValid(PRESETS.synthpad);
+  });
+
+  it("el grupo Pads trae los 3 presets del usuario", () => {
+    const bank = PRESET_GROUPS.find((g) => g.label === "Pads")!;
+    expect(bank.names).toEqual(["softpad", "omakase", "overdrive"]);
+    for (const n of bank.names) assertValid(PRESETS[n]);
+    expect(PRESET_LABELS.softpad).toBe("SynthPad");
+    expect(PRESET_LABELS.omakase).toBe("OMAKASE");
+    expect(PRESET_LABELS.overdrive).toBe("Overdrive");
+    expect(PRESETS.overdrive.drive).toBeGreaterThan(0);
   });
 
   it("el banco 'Inspiration' recrea el synth de referencia: onda + filtro estático 1200 Hz, sin FX", () => {
     const bank = PRESET_GROUPS.find((g) => g.label.includes("Inspiration"))!;
+    expect(bank.label).toContain("Eric Wei");
     expect(bank.names).toEqual(["warmsynth", "brightsynth", "retrosynth"]);
     // Warm y Retro se mantienen fieles a la referencia (Bright fue reajustado
     // por el usuario a un pad brillante propio).

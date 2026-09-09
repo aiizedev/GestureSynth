@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TimbrePanel } from "./TimbrePanel";
 import type { Synth } from "../audio/Synth";
 import type { TimbrePreset } from "../audio/presets/types";
+import { PRESET_NAMES } from "../audio/presets";
 
 function makeSynth() {
   return {
@@ -55,6 +56,25 @@ function saveRowParts(root: HTMLElement) {
   return { input, saveBtn: buttons[0], deleteBtn: buttons[1] };
 }
 
+/** Importa un sonido por el popup de "Importar" (ya no hay preset FM de fábrica). */
+function importSound(root: HTMLElement, name: string, json: object): void {
+  [...root.querySelectorAll<HTMLButtonElement>("button")]
+    .find((b) => b.textContent === "Importar")!
+    .click();
+  const popup = root.querySelector<HTMLElement>(".sound-share-popup")!;
+  popup.querySelector<HTMLInputElement>("input[type=text]")!.value = name;
+  popup.querySelector<HTMLTextAreaElement>("textarea")!.value = JSON.stringify(json);
+  [...root.querySelectorAll<HTMLButtonElement>("button")]
+    .find((b) => b.textContent === "Cargar")!
+    .click();
+}
+
+const FM_SOUND = {
+  version: 2,
+  engine: "fm",
+  fm: { harmonicity: 3, modulationIndex: 8, modWaveform: "sine" },
+};
+
 describe("TimbrePanel", () => {
   it("aplica un preset v2 al construirse y muestra 4 macros", () => {
     expect(synth.setTimbre).toHaveBeenCalled();
@@ -62,17 +82,17 @@ describe("TimbrePanel", () => {
     expect(panel.element.querySelectorAll(".macros .knob")).toHaveLength(4);
   });
 
-  it("el dropdown ofrece los 23 presets de fábrica agrupados", () => {
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
+  it("el dropdown ofrece todos los presets de fábrica agrupados", () => {
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(
+      PRESET_NAMES.length,
+    );
     expect(
       panel.element.querySelectorAll("select optgroup").length,
-    ).toBeGreaterThanOrEqual(2);
+    ).toBeGreaterThanOrEqual(3);
   });
 
-  it("cambiar a un preset FM conmuta el motor y desactiva la sección de filtro", () => {
-    const select = panel.element.querySelector("select")!;
-    select.value = "epiano";
-    select.dispatchEvent(new Event("change"));
+  it("cargar un sonido FM conmuta el motor y desactiva la sección de filtro", () => {
+    importSound(panel.element, "FM Test", FM_SOUND);
 
     expect(lastPreset(synth).engine).toBe("fm");
     const filterSection = [
@@ -82,9 +102,8 @@ describe("TimbrePanel", () => {
   });
 
   it("volver a un preset sustractivo reactiva la sección de filtro", () => {
+    importSound(panel.element, "FM Test", FM_SOUND);
     const select = panel.element.querySelector("select")!;
-    select.value = "epiano";
-    select.dispatchEvent(new Event("change"));
     select.value = "pluck";
     select.dispatchEvent(new Event("change"));
 
@@ -122,7 +141,7 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     saveBtn.click();
 
     const options = panel.element.querySelectorAll("select option");
-    expect(options).toHaveLength(24);
+    expect(options).toHaveLength(PRESET_NAMES.length + 1);
     const groups = [
       ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
     ];
@@ -154,10 +173,10 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     const { input, saveBtn, deleteBtn } = saveRowParts(panel.element);
     input.value = "Temp";
     saveBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(24);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(PRESET_NAMES.length + 1);
 
     deleteBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(PRESET_NAMES.length);
     expect(
       [
         ...panel.element.querySelectorAll<HTMLOptGroupElement>("select optgroup"),
@@ -170,7 +189,7 @@ describe("TimbrePanel — guardar presets del usuario", () => {
     const { input, saveBtn } = saveRowParts(panel.element);
     input.value = "Clean";
     saveBtn.click();
-    expect(panel.element.querySelectorAll("select option")).toHaveLength(23);
+    expect(panel.element.querySelectorAll("select option")).toHaveLength(PRESET_NAMES.length);
     expect(input.getAttribute("aria-invalid")).toBe("true");
   });
 

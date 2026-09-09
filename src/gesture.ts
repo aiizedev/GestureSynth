@@ -56,7 +56,9 @@ const stabilize = makeChordStabilizer();
 let lastDynamics: Dynamics = dynamicsFromHeight(NEUTRAL_HEIGHT);
 
 const view = new GestureView({
-  leftControls: [presets.element, account.element],
+  leftControls: [presets.element],
+  // La foto de perfil va en la última fila, junto a "crear sonidos".
+  footAside: account.element,
   getSound: () => synth.getCurrentTimbre(),
   // Importar desde el menú ⚙: el popup pide nombre; se guarda como preset de
   // usuario, aparece en el dropdown seleccionado y suena, sin recargar.

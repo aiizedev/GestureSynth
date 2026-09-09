@@ -68,6 +68,8 @@ export interface GestureViewOptions {
   onPerform?: (frame: PerformFrame) => void;
   /** Controles extra en la columna izquierda, bajo el selector de tonalidad. */
   leftControls?: HTMLElement[];
+  /** Elemento que se pone en la última fila, junto al enlace "crear sonidos". */
+  footAside?: HTMLElement;
   /** Sonido actual a exportar desde el menú ⚙ (junto con `onImport`). */
   getSound?: () => TimbrePreset;
   /** Aplicar y guardar un sonido importado desde el menú ⚙ con su nombre. */
@@ -153,7 +155,6 @@ export class GestureView {
         this.updateChord(this.latest);
       },
     });
-
     const leftPanel = document.createElement("div");
     leftPanel.className = "gesture-left";
     leftPanel.append(keys.element, ...(opts.leftControls ?? []));
@@ -161,11 +162,14 @@ export class GestureView {
     create.className = "gesture-create";
     create.href = "/";
     create.textContent = "crear sonidos ↗";
-    const aboutLink = document.createElement("a");
-    aboutLink.className = "gesture-create";
-    aboutLink.href = "/about";
-    aboutLink.textContent = "qué es esto ↗";
-    leftPanel.append(create, aboutLink);
+    if (opts.footAside) {
+      const foot = document.createElement("div");
+      foot.className = "gesture-foot";
+      foot.append(opts.footAside, create);
+      leftPanel.append(foot);
+    } else {
+      leftPanel.append(create);
+    }
 
     this.startOverlay = document.createElement("div");
     this.startOverlay.className = "gesture-start";

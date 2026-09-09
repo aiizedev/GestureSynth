@@ -149,7 +149,7 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 
 ### Presets
 
-20 presets de fábrica en tres grupos del dropdown:
+16 presets de fábrica en cuatro grupos del dropdown:
 
 | Grupo | Preset | Motor | Carácter |
 |---|---|:---:|---|
@@ -158,32 +158,31 @@ menores de cualquier grado (dominantes secundarias, préstamos tonales…).
 | | Warm Pad | sustr. | pad saw con unísono ancho |
 | | Pluck | sustr. | pizzicato corto y resonante |
 | | Brass | sustr. | metales con ataque medio |
-| | Gritty | sustr. | cuadrada saturada |
-| | E-Piano | **FM** | piano eléctrico tipo DX |
-| | Bells | **FM** | campanas metálicas |
-| **Joji / ballad** | Ballad Lead | sustr. | pad-lead cálido y abierto *(ref. «Die For You»)* |
+| **Dark Synths** | Ballad Lead | sustr. | pad-lead cálido y abierto *(ref. «Die For You»)* |
+| | Midnight Pad | sustr. | pad saw enorme, swell largo, reverb de 9 s, master −18 dB |
+| | Midnight Pad Thin | sustr. | igual pero sin unísono: la versión fina para acordes densos |
+| | Crystal Air | sustr. | seno filtrado muy alto, delay con cola y reverb de 11 s |
 | | Hazy Pad | sustr. | pad lento, con cuerpo y algo de aire *(«Run» / «Slow Dancing…»)* |
-| | Slow Dance | sustr. | pad saw amplio y profundo, reverb contenida *(«Slow Dancing in the Dark»)* |
-| | Mellow Rhodes | **FM** | Rhodes con cola y brillo *(«Demons» / «Test Drive»)* |
-| | Cold Bells | **FM** | campana FM más tonal, menos metálica *(«Ew» / «Pretty Boy»)* |
-| | Felt Keys | sustr. | teclas suaves con algo de sustain *(≈ «Glimpse of Us»)* |
-| | Dark Wash | sustr. | colchón de fondo, oscuro pero con el acorde legible |
-| | Warm Dance | sustr. | mezcla de *Warm Synth* × *Slow Dance*: triangular con unísono suave, filtro con movimiento leve, reverb media, entrada blanda |
-| | Dark Bed | sustr. | pad oscuro y contenido para acordes con séptima: saw filtrado a 640 Hz, poco unísono, reverb media, master −15 dB (colchón de fondo) |
-| **Inspiration · gesture-synth** | Warm Synth | sustr. | triangular a través de un pasa-bajos estático 1200 Hz, sin FX |
+| **Inspiration — Eric Wei** | Warm Synth | sustr. | triangular a través de un pasa-bajos estático 1200 Hz, sin FX |
 | | Bright Synth | sustr. | sierra abierta (corte ~6 kHz), ataque muy lento tipo swell, reverb corta |
 | | Retro Synth | sustr. | onda cuadrada, mismo pasa-bajos estático que Warm Synth |
+| **Pads** | SynthPad | sustr. | saw estrecho, corte medio, envolvente de filtro completa, casi seco |
+| | OMAKASE | sustr. | saw ancho con ataque instantáneo (ampenv tipo pluck) y delay corto |
+| | Overdrive | sustr. | saw brillante con `drive` 0.7, chorus y reverb larga; el más sucio |
 
-> **Warm Synth** y **Retro Synth** recrean el synth de referencia
-> [`ericwei97-cloud/gesture-synth`](https://github.com/ericwei97-cloud/gesture-synth):
-> un solo oscilador → lowpass 1200 Hz / Q 0.7, ataque instantáneo, sin FX; el
-> preset **es** la forma de onda. **Bright Synth** se reajustó a un pad brillante
-> propio (filtro abierto, swell largo, algo de reverb/delay).
+> **Warm Synth** y **Retro Synth** recrean el synth de referencia de
+> [**Eric Wei**](https://github.com/ericwei97-cloud/gesture-synth) —de quien es
+> la idea original de tocar acordes con las manos por cámara—: un solo oscilador
+> → lowpass 1200 Hz / Q 0.7, ataque instantáneo, sin FX; el preset **es** la
+> forma de onda. **Bright Synth** se reajustó a un pad brillante propio (filtro
+> abierto, swell largo, algo de reverb/delay). El grupo lleva su nombre como
+> homenaje.
 
-> Estos presets van con **poca distorsión, algo más de brillo y cuerpo** para
-> que el acorde sea el protagonista y no la textura. El grano de casete/lo-fi de
-> esos discos necesita nodos que el motor aún no tiene (BitCrusher/Chebyshev,
-> ruido, EQ3). Ver *Roadmap*.
+> **Dark Synths** son pads oscuros y atmosféricos (saws detuneados, reverbs
+> enormes) inspirados en Joji; **Pads** son tres presets aportados por el
+> usuario. Todos van con **poca distorsión y el acorde como protagonista** —el
+> grano de casete/lo-fi necesita nodos que el motor aún no tiene
+> (BitCrusher/Chebyshev, ruido, EQ3). Ver *Roadmap*.
 
 ---
 
@@ -199,7 +198,7 @@ Interfaz al estilo de la referencia de [Eric Wei](https://github.com/ericwei97-c
 tipo `object-fit: cover`), en gris atenuado hasta activarla, overlay de *click para
 activar*. Columna izquierda (`.gesture-left`): **selector de tónica**
 (`KeySelector`; sin menú mayor/menor — la calidad la pone la inclinación de la
-mano), **selector de preset** (`PresetSelector`: 20 de fábrica por grupos + los
+mano), **selector de preset** (`PresetSelector`: 16 de fábrica por grupos + los
 que hayas guardado en `/`) y un enlace **«crear sonidos ↗»** que lleva a `/`.
 Arriba a la derecha un botón **⚙ de opciones** (`GestureOptions`): color
 principal de la página (`--gesture-accent`, aplicado a todo el texto) y
@@ -297,7 +296,7 @@ src/
 │       ├── types.ts             TimbrePreset v2 (esquema anidado + version + engine)
 │       ├── index.ts             carga, PRESET_GROUPS, migratePreset (v1 → v2), clonePreset
 │       ├── userStore.ts         presets del usuario en localStorage (mismo esquema v2)
-│       └── *.json               20 presets de fábrica
+│       └── *.json               16 presets de fábrica
 ├── tracking/
 │   ├── PanelPerformanceSource.ts  Temporal: eventos del panel DAW → GestureState
 │   ├── CameraFeed.ts             getUserMedia + <video> oculto, errores tipados (sin tasks-vision)
@@ -349,7 +348,7 @@ Tests: `*.test.ts` junto a su módulo — `musicTheory`, `presets`, `handModel`,
 - [x] Panel de timbre: presets, macros, sección avanzada, potenciómetros
 - [x] Visualizador de onda / filtro / envolvente
 - [x] Motor conmutable sustractivo ↔ FM por preset
-- [x] 20 presets de fábrica (básico + «Joji / ballad» + «Inspiration»)
+- [x] 16 presets de fábrica (Basic + «Dark Synths» + «Inspiration — Eric Wei» + «Pads»)
 - [x] Guardar / borrar presets propios (localStorage, esquema v2 serializable)
 - [x] Contrato `GestureState` congelado + `PanelPerformanceSource` temporal
 - [x] `/gesture`: cámara a pantalla completa + `HandLandmarker`, identificación de
@@ -392,4 +391,16 @@ Tests: `*.test.ts` junto a su módulo — `musicTheory`, `presets`, `handModel`,
 - **Aislamiento verificable con `grep`:** `from "tone"` → solo `audio/Synth.ts`;
   `from "@mediapipe/tasks-vision"` → solo `tracking/HandLandmarker.ts`. Ningún
   módulo de `tracking/` importa `tone` aunque el bundle de `/gesture` lo incluya.
+
+---
+
+## Agradecimientos
+
+- La idea original de tocar acordes moviendo las manos frente a la cámara es de
+  [**Eric Wei**](https://github.com/ericwei97-cloud/gesture-synth); el grupo de
+  presets «Inspiration — Eric Wei» recrea el synth de su proyecto como homenaje.
+- Las revisiones de los conceptos musicales (grados, voicings, nomenclatura por
+  círculo de quintas, tonalidades mayores y menores) se hicieron con alumnos del
+  programa de **Licenciatura en Música del Conservatorio del Tolima**:
+  - Santiago Alejandro Inchima Manrique — `1720221062@conservatoriodeltolima.edu.co`
 
