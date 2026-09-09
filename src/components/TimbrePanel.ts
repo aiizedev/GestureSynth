@@ -71,7 +71,7 @@ export class TimbrePanel {
     this.current = migratePreset(clonePreset(PRESETS[PRESET_NAMES[0]]));
 
     this.element = document.createElement("section");
-    this.element.className = "panel";
+    this.element.className = "panel panel-timbre";
     this.element.setAttribute("aria-disabled", "true");
 
     const h2 = document.createElement("h2");

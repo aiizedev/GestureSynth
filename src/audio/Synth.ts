@@ -124,13 +124,25 @@ export class Synth {
 
   /**
    * Dispara un acorde dejando que las colas de los anteriores sigan sonando.
-   * Si se acumulan demasiados acordes solapados, suelta el más viejo primero.
+   * Si se acumulan demasiados acordes solapados, corta el más viejo — pero SÓLO
+   * sus notas abandonadas: una nota que el acorde actual (o algún acorde más
+   * reciente aún en la cola) sigue usando NO se suelta, porque `PolySynth` asigna
+   * una voz por frecuencia y soltarla apagaría el acorde vigente (bug: al volver
+   * a un grado tras 8+ acordes, ese acorde se silenciaba).
    */
   private triggerChord(frequencies: number[]): void {
     this.poly.triggerAttack(frequencies, undefined, 0.8);
     this.ringing.push(frequencies.slice());
+
+    const key = (f: number) => Math.round(f * 100) / 100;
     while (this.ringing.length > Synth.MAX_RINGING_CHORDS) {
-      this.poly.triggerRelease(this.ringing.shift()!);
+      const stale = this.ringing.shift()!;
+      const keep = new Set<number>(this.current.map(key));
+      for (const chord of this.ringing) {
+        for (const f of chord) keep.add(key(f));
+      }
+      const abandoned = stale.filter((f) => !keep.has(key(f)));
+      if (abandoned.length) this.poly.triggerRelease(abandoned);
     }
   }
 

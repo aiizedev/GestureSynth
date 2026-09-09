@@ -30,7 +30,7 @@ export class ChordDeck {
 
   constructor(private readonly source: PanelPerformanceSource) {
     this.element = document.createElement("section");
-    this.element.className = "panel";
+    this.element.className = "panel panel-chords";
     this.element.setAttribute("aria-disabled", "true");
 
     const h2 = document.createElement("h2");

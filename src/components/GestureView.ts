@@ -13,6 +13,8 @@ import { assignHands, type HandObservation, type HandsFrame } from "../tracking/
 import {
   fingersUp,
   handTilt,
+  readDegree,
+  readQuality,
   readVoicing,
   TILT_THRESHOLD,
   voicingEnum,
@@ -22,7 +24,9 @@ import {
 import type { TimbrePreset } from "../audio/presets/types";
 import type { ChordIntent } from "../utils/gestureMapping";
 import { describeChord, DEGREE_LABELS, type KeyMode } from "../utils/musicTheory";
+import { GestureControls } from "./GestureControls";
 import { GestureOptions } from "./GestureOptions";
+import { GestureTutorial } from "./GestureTutorial";
 import { HandOverlayCanvas } from "./HandOverlayCanvas";
 import { KeySelector } from "./KeySelector";
 
@@ -93,8 +97,12 @@ export class GestureView {
   private readonly aura: HTMLDivElement;
   private readonly startOverlay: HTMLDivElement;
   private readonly startText: HTMLDivElement;
+  private readonly askOverlay: HTMLDivElement;
   private readonly hud: HTMLDivElement;
   private readonly chordEl: HTMLDivElement;
+  private readonly controlsBtn: HTMLButtonElement;
+  private readonly controls = new GestureControls();
+  private readonly tutorial = new GestureTutorial(() => this.controls.open());
 
   private readonly intervals: number[] = [];
   private lastTs = 0;
@@ -163,9 +171,44 @@ export class GestureView {
     this.startText = document.createElement("div");
     this.startText.className = "start-text";
     this.startText.textContent = "toca para activar la cámara";
-    this.startOverlay.append(circle, this.startText);
 
+    this.startOverlay.append(circle, this.startText);
     this.startOverlay.addEventListener("click", () => this.activate(opts.onActivate));
+
+    // Botón discreto abajo-derecha: sólo para quien quiera repasar los gestos.
+    this.controlsBtn = document.createElement("button");
+    this.controlsBtn.type = "button";
+    this.controlsBtn.className = "gesture-controls-btn";
+    this.controlsBtn.textContent = "controles";
+    this.controlsBtn.addEventListener("click", () => this.controls.open());
+
+    // Paso 2: sólo con la cámara YA activa se pregunta si hace falta el
+    // tutorial. Oculto hasta que `activate` termina bien.
+    this.askOverlay = document.createElement("div");
+    this.askOverlay.className = "gesture-ask";
+    this.askOverlay.hidden = true;
+    const askText = document.createElement("div");
+    askText.className = "ask-text";
+    askText.textContent = "¿Sabes tocar?";
+    const askKnow = document.createElement("button");
+    askKnow.type = "button";
+    askKnow.className = "ask-btn";
+    askKnow.textContent = "Sí, ya sé";
+    askKnow.addEventListener("click", () => {
+      this.askOverlay.hidden = true;
+    });
+    const askLearn = document.createElement("button");
+    askLearn.type = "button";
+    askLearn.className = "ask-btn ask-btn-primary";
+    askLearn.textContent = "No, enséñame";
+    askLearn.addEventListener("click", () => {
+      this.askOverlay.hidden = true;
+      this.tutorial.start();
+    });
+    const askRow = document.createElement("div");
+    askRow.className = "ask-row";
+    askRow.append(askKnow, askLearn);
+    this.askOverlay.append(askText, askRow);
 
     this.element.append(
       this.overlay.element,
@@ -173,11 +216,15 @@ export class GestureView {
       this.hud,
       this.chordEl,
       leftPanel,
+      this.tutorial.element,
+      this.controlsBtn,
       options.element,
+      this.askOverlay,
       this.startOverlay,
+      this.controls.element,
     );
     this.renderHud(null);
-    this.renderChord(null, null);
+    this.renderChord(null, null, { sounding: false, leftPresent: false });
   }
 
   private async activate(onActivate: () => Promise<void>): Promise<void> {
@@ -189,6 +236,7 @@ export class GestureView {
       await onActivate();
       this.startOverlay.classList.add("hidden");
       this.overlay.setDimmed(false);
+      this.askOverlay.hidden = false;
     } catch (err) {
       const kind = (err as { kind?: string })?.kind ?? "error";
       this.startText.textContent = START_ERROR[kind] ?? START_ERROR.error;
@@ -234,22 +282,48 @@ export class GestureView {
 
     this.overlay.render(video, frame);
     this.renderHud(frame, video);
+    if (this.tutorial.running) this.tutorial.feed(frame);
     this.updateChord(frame);
   }
 
   /**
    * Deriva el acorde del frame con la tonalidad vigente: lo pinta y lo emite a
-   * `onChord` (que en `/gesture` lo manda al `Synth`).
+   * `onPerform` (que en `/gesture` lo manda al `Synth`).
+   *
+   * `sounding` es lo que SUENA: sólo si la izquierda da grado Y la derecha da
+   * voicing. `display` es lo que se PINTA: si no suena pero la izquierda ya
+   * marca un grado, muestra el acorde en preview (tríada) con un aviso, para que
+   * se vea el acorde tomando forma antes de disparar con la derecha.
    */
   private updateChord(frame: HandsFrame | null): void {
     const { left, right } = assignHands(frame?.hands ?? []);
-    const intent = readChordIntent(left, right, this.chordKey, this.chordKeyMode);
+    const sounding = readChordIntent(left, right, this.chordKey, this.chordKeyMode);
     const rawVoicing = right ? readVoicing(right) : null;
+
     this.onPerform?.({
-      chord: intent,
+      chord: sounding,
       rightHeight: right ? handHeight(right) : null,
     });
-    this.renderChord(intent, rawVoicing);
+
+    let display = sounding;
+    if (!display && left) {
+      const degree = readDegree(left);
+      if (degree !== null) {
+        display = {
+          key: this.chordKey,
+          keyMode: this.chordKeyMode,
+          degree,
+          quality: readQuality(left) ?? "major",
+          voicing: 1,
+          octave: 0,
+        };
+      }
+    }
+
+    this.renderChord(display, rawVoicing, {
+      sounding: sounding !== null,
+      leftPresent: !!left,
+    });
   }
 
   /**
@@ -287,11 +361,15 @@ export class GestureView {
   private renderChord(
     intent: ChordIntent | null,
     rawVoicing: VoicingIntent | null,
+    state: { sounding: boolean; leftPresent: boolean },
   ): void {
     if (intent === null) {
+      const msg = state.leftPresent
+        ? "mano izquierda: elige el grado"
+        : "sin mano izquierda";
       this.chordEl.innerHTML =
         `<span class="chord-degree chord-idle">–</span>` +
-        `<span class="chord-voicing chord-idle">sin mano izquierda</span>`;
+        `<span class="chord-voicing chord-idle">${msg}</span>`;
       return;
     }
 
@@ -315,9 +393,18 @@ export class GestureView {
       (inverted ? `/${d.notes[0]}` : "");
     const exact = `${symbol}  ·  ${d.notes.join(" ")}`;
 
+    if (state.sounding) {
+      this.chordEl.innerHTML =
+        `<span class="chord-degree">${roman}</span>` +
+        `<span class="chord-voicing">${exact}</span>`;
+      return;
+    }
+
+    // Preview: la izquierda ya marca el acorde; falta el voicing de la derecha
+    // para dispararlo. Se ve la tríada, atenuada, con el aviso.
     this.chordEl.innerHTML =
-      `<span class="chord-degree">${roman}</span>` +
-      `<span class="chord-voicing">${exact}</span>`;
+      `<span class="chord-degree chord-pending">${roman}</span>` +
+      `<span class="chord-voicing chord-pending">${exact}  ·  falta la mano derecha</span>`;
   }
 }
 

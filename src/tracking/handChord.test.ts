@@ -50,12 +50,29 @@ describe("readChordIntent", () => {
   });
 
   it("puño izquierdo (sin grado legible) → null", () => {
-    expect(readChordIntent(left({}), undefined, "C", "major")).toBeNull();
+    expect(readChordIntent(left({}), right({ index: true }), "C", "major")).toBeNull();
   });
 
-  it("izquierda 1 dedo + inclinada a la derecha → grado 1 mayor, tríada", () => {
+  it("sólo mano izquierda (sin voicing de la derecha) → null: hay que especificar el voicing", () => {
     expect(
       readChordIntent(left({ index: true, tilt: "right" }), undefined, "C", "major"),
+    ).toBeNull();
+  });
+
+  it("mano derecha sin índice (puño) → null", () => {
+    expect(
+      readChordIntent(left({ index: true, tilt: "right" }), right({}), "C", "major"),
+    ).toBeNull();
+  });
+
+  it("izquierda 1 dedo a la derecha + derecha índice → grado 1 mayor, tríada", () => {
+    expect(
+      readChordIntent(
+        left({ index: true, tilt: "right" }),
+        right({ index: true }),
+        "C",
+        "major",
+      ),
     ).toEqual({
       key: "C",
       keyMode: "major",
@@ -103,11 +120,17 @@ describe("readChordIntent", () => {
   });
 
   it("degrado 1..7 con VI/VII de la digitación de la referencia", () => {
-    const g6 = readChordIntent(left({ index: true, pinky: true, tilt: "right" }), undefined, "C", "major");
+    const rv = right({ index: true });
+    const g6 = readChordIntent(
+      left({ index: true, pinky: true, tilt: "right" }),
+      rv,
+      "C",
+      "major",
+    );
     expect(g6?.degree).toBe(6);
     const g7 = readChordIntent(
       left({ thumb: true, index: true, pinky: true, tilt: "right" }),
-      undefined,
+      rv,
       "C",
       "major",
     );

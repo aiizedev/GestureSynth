@@ -8,6 +8,7 @@ import { ChordDeck } from "./components/ChordDeck";
 import { TimbrePanel } from "./components/TimbrePanel";
 import { ChordHud } from "./components/ChordHud";
 import { ThemePicker } from "./components/ThemePicker";
+import { SiteTour } from "./components/SiteTour";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -17,6 +18,9 @@ const source = new PanelPerformanceSource();
 
 // La ÚNICA pieza que puentea tracking ↔ audio. No cambia al conectar la cámara.
 source.subscribe(makeGestureApplier(synth));
+
+// Tour guiado de la interfaz (botón "¿Cómo funciona?" + auto-abre la 1ª visita).
+const tour = new SiteTour();
 
 // --- Cabecera -------------------------------------------------------------
 const header = document.createElement("header");
@@ -32,13 +36,21 @@ const letsPlay = document.createElement("a");
 letsPlay.className = "lets-play";
 letsPlay.href = "/gesture";
 letsPlay.textContent = "Let's play →";
-const brandTag = document.createElement("span");
-brandTag.className = "brand-tag";
-brandTag.textContent = "GestureSynth · sintetizador de acordes";
+const tourBtn = document.createElement("button");
+tourBtn.type = "button";
+tourBtn.className = "tour-btn is-pulsing";
+tourBtn.textContent = "¿Cómo funciona?";
+// Parpadea para llamar la atención hasta que se abre el tour o se pulsa
+// "Empezar" (quien ya sabe usarlo no necesita que insista).
+const stopTourPulse = () => tourBtn.classList.remove("is-pulsing");
+tourBtn.addEventListener("click", () => {
+  stopTourPulse();
+  tour.start();
+});
 // El `<canvas>` del visualizador no reacciona solo a `--accent`: al cambiar de
 // tema (aquí o desde otra pestaña con `/gesture`) hay que repintarlo.
 const themePicker = new ThemePicker(() => timbrePanel.refreshVisuals());
-headActions.append(letsPlay, brandTag, themePicker.element);
+headActions.append(letsPlay, tourBtn, themePicker.element);
 
 header.append(title, headActions);
 
@@ -49,6 +61,7 @@ const hud = new ChordHud(source);
 
 const transport = new TransportBar({
   onStart: async () => {
+    stopTourPulse();
     await synth.start();
     chordDeck.setEnabled(true);
     timbrePanel.setEnabled(true);
@@ -86,6 +99,9 @@ app.append(
   ...(advanced ? [advanced] : []),
   hud.element,
 );
+// Fuera de `#app` para no heredar su animación de entrada ni desplazar
+// `#app > *:last-child`. No se lanza solo: lo abre el botón "¿Cómo funciona?".
+document.body.append(tour.element);
 // La entrada escalonada de los bloques la hace CSS (`@keyframes rise`), que
 // corre siempre, también con la pestaña en segundo plano.
 
